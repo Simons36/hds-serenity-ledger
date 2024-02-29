@@ -2,6 +2,7 @@
 
 # This script generates pairs of private/public keys, and stores them in the Keystore/ folder.
 
+mkdir -p Keystore
 cd Keystore
 
 for i in {1..4}
