@@ -5,7 +5,8 @@ public enum ErrorMessage {
     ConfigFileFormat("The configuration file has wrong syntax"),
     NoSuchNode("Can't send a message to a non existing node"),
     SocketSendingError("Error while sending message"),
-    CannotOpenSocket("Error while opening socket");
+    CannotOpenSocket("Error while opening socket"),
+    ErrorImportingPrivateKey("The private key is not available at the path supplied");
 
     private final String message;
 
