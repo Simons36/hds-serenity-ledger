@@ -4,6 +4,8 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.HashMap;
 
+import pt.ulisboa.tecnico.hdsledger.cryptolib.structs.SignatureStruct;
+
 public class CryptoLibrary {
     
     //Stores the private key of this node
@@ -18,23 +20,24 @@ public class CryptoLibrary {
         _thisNodePrivateKey = CryptoIO.readPrivateKey(pathToPrivateKey); 
     }
 
-    public static void addPublicKey(String nodeID, String pathToPublicKey) throws Exception{
+    public void addPublicKey(String nodeID, String pathToPublicKey) throws Exception{
 
         PublicKey publicKey = CryptoIO.readPublicKey(pathToPublicKey);
         _publicKeys.put(nodeID, publicKey);
     
     }
 
-    public static byte[] sign(byte[] data) throws Exception{
+    public SignatureStruct sign(byte[] data) throws Exception{
         
-        return CryptoUtil.sign(data, _thisNodePrivateKey);
+        byte[] signature = CryptoUtil.sign(data, _thisNodePrivateKey);
+        return new SignatureStruct(signature);
 
     }
 
-    public static boolean verifySignature(byte[] data, byte[] signature, String nodeID) throws Exception{
+    public boolean verifySignature(byte[] data, SignatureStruct signature, String nodeID) throws Exception{
 
         PublicKey publicKey = _publicKeys.get(nodeID);
-        return CryptoUtil.verifySignature(data, signature, publicKey);
+        return CryptoUtil.verifySignature(data, signature.getContent(), publicKey);
     
     }
 

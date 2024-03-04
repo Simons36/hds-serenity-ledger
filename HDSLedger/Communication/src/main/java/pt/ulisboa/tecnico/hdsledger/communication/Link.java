@@ -1,8 +1,12 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import pt.ulisboa.tecnico.hdsledger.communication.Message.Type;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.structs.AuthenticationType;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.structs.SignatureStruct;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
 
 import java.io.IOException;
@@ -36,6 +40,8 @@ public class Link {
     private final AtomicInteger messageCounter = new AtomicInteger(0);
     // Send messages to self by pushing to queue instead of through the network
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
+    // Create library to call for cryptographic operations
+    private final CryptoLibrary cryptoLibrary;
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
         this(self, port, nodes, messageClass, false, 200);
@@ -43,6 +49,7 @@ public class Link {
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
             boolean activateLogs, int baseSleepTime) {
+        
 
         this.config = self;
         this.messageClass = messageClass;
@@ -61,6 +68,20 @@ public class Link {
         }
         if (!activateLogs) {
             LogManager.getLogManager().reset();
+        }
+
+        //add private key and public keys to the crypto library
+        try {
+
+            this.cryptoLibrary = new CryptoLibrary("../" + config.getPrivateKeyPath());
+
+            for (ProcessConfig node : nodes) {
+                this.cryptoLibrary.addPublicKey(node.getId(), "../" + node.getPublicKeyPath());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
         }
     }
 
@@ -104,6 +125,8 @@ public class Link {
                 int messageId = data.getMessageId();
                 int sleepTime = BASE_SLEEP_TIME;
 
+                SignatureStruct signature = cryptoLibrary.sign(data.toString().getBytes());
+
                 // Send message to local queue instead of using network if destination in self
                 if (nodeId.equals(this.config.getId())) {
                     this.localhostQueue.add(data);
@@ -119,8 +142,9 @@ public class Link {
                     LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
-
-                    unreliableSend(destAddress, destPort, data);
+                    
+                    //print base 64 bytes of date
+                    unreliableSend(destAddress, destPort, data, signature);
 
                     // Wait (using exponential back-off), then look for ACK
                     Thread.sleep(sleepTime);
@@ -134,7 +158,7 @@ public class Link {
 
                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Message {1} sent to {2}:{3} successfully",
                         config.getId(), data.getType(), destAddress, destPort));
-            } catch (InterruptedException | UnknownHostException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();
@@ -151,12 +175,24 @@ public class Link {
      *
      * @param data The message to be sent
      */
-    public void unreliableSend(InetAddress hostname, int port, Message data) {
+    public void unreliableSend(InetAddress hostname, int port, Message data, AuthenticationType authentication) {
         new Thread(() -> {
             try {
-                byte[] buf = new Gson().toJson(data).getBytes();
+
+                //we will take the authentication used (e.g., MAC or digital signature) and insert it into the message 
+                
+                //first create json of the message
+                JsonObject messageJson = new Gson().toJsonTree(data).getAsJsonObject();
+
+                //then add field for authentication, stored as base64 string
+                String signatureBase64 = Base64.getEncoder().encodeToString(authentication.getContent());
+                messageJson.addProperty(authentication.getAuthenticationTypeName(), signatureBase64);
+
+                //finally, convert the json to bytes and send it
+                byte[] buf = messageJson.toString().getBytes();
                 DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
                 socket.send(packet);
+
             } catch (IOException e) {
                 e.printStackTrace();
                 throw new HDSSException(ErrorMessage.SocketSendingError);
@@ -167,12 +203,13 @@ public class Link {
     /*
      * Receives a message from any node in the network (blocking)
      */
-    public Message receive() throws IOException, ClassNotFoundException {
+    public Message receive() throws IOException, ClassNotFoundException, HDSSException, Exception {
 
         Message message = null;
         String serialized = "";
         Boolean local = false;
         DatagramPacket response = null;
+        JsonObject messageJson = null;
         
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
@@ -181,19 +218,59 @@ public class Link {
         } else {
             byte[] buf = new byte[65535];
             response = new DatagramPacket(buf, buf.length);
-
+            
             socket.receive(response);
-
+            
             byte[] buffer = Arrays.copyOfRange(response.getData(), 0, response.getLength());
             serialized = new String(buffer);
-            message = new Gson().fromJson(serialized, Message.class);
+            
+            messageJson = new Gson().fromJson(serialized, JsonObject.class);
+            
+            //we will now check if the message has a field for authentication
+            //if it does, we will remove it and verify the authentication
+            //if it doesn't, we will assume the message is from the local network and not verify the authentication
+            
+            //print messageJson
+            
+            if (messageJson.has("digital_signature")) {
+                //we will now remove the authentication field and verify the signature
+                String signature = messageJson.get("digital_signature").getAsString();
+                messageJson.remove("digital_signature");
+                
+                message = new Gson().fromJson(messageJson, Message.class);
+
+                byte[] signatureBytes = Base64.getDecoder().decode(signature);
+
+                
+                //we will now convert the json back to bytes and verify the signature
+                byte[] messageBytes = message.toString().getBytes();
+                
+                try {
+                    
+                    if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
+                        LOGGER.log(Level.INFO, "Invalid signature! Ignoring message with message ID " + messageJson.get("messageId").getAsInt());
+                        message.setType(Message.Type.IGNORE);
+
+                        
+                    }
+
+                } catch (Exception e) {
+                    throw e;
+                }
+
+            }else{
+                message = new Gson().fromJson(messageJson, Message.class);
+                message.setType(Message.Type.IGNORE);
+            }
+
         }
 
+        
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
-
+        
         if (!nodes.containsKey(senderId))
-            throw new HDSSException(ErrorMessage.NoSuchNode);
+        throw new HDSSException(ErrorMessage.NoSuchNode);
 
         // Handle ACKS, since it's possible to receive multiple acks from the same
         // message
@@ -203,8 +280,8 @@ public class Link {
         }
 
         // It's not an ACK -> Deserialize for the correct type
-        if (!local)
-            message = new Gson().fromJson(serialized, this.messageClass);
+        if (!local && !message.getType().equals(Message.Type.IGNORE)){}
+        message = new Gson().fromJson(messageJson, this.messageClass);
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
@@ -212,6 +289,7 @@ public class Link {
         if (isRepeated) {
             message.setType(Message.Type.IGNORE);
         }
+        System.out.println(message.getType());
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
@@ -247,7 +325,7 @@ public class Link {
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            unreliableSend(address, port, responseMessage);
+            unreliableSend(address, port, responseMessage, new SignatureStruct(responseMessage.toString().getBytes()));
         }
         
         return message;

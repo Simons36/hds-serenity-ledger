@@ -12,6 +12,7 @@
         <module>Service</module>
         <module>Utilities</module>
         <module>Communication</module>
+        <module>Cryptolib</module>
     </modules>
 
 </project>

@@ -11,6 +11,10 @@ public class Message implements Serializable {
     // Message type
     private Type type;
 
+    //authentication bytes
+    //TODO: Decide whether to use digital signatures or MACs
+    private byte[] signature;
+
     public enum Type {
         APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
     }
@@ -42,5 +46,23 @@ public class Message implements Serializable {
 
     public void setType(Type type) {
         this.type = type;
+    }
+
+    public byte[] getSignature() {
+        return signature;
+    }
+
+    public void setSignature(byte[] signature) {
+        this.signature = signature;
+    }
+
+    @Override
+    public String toString() {
+        return "Message{" +
+                "senderId= '" + senderId + '\'' +
+                ", messageId= " + messageId +
+                ", type= " + type +
+                ", signature= " + signature +
+                '}';
     }
 }

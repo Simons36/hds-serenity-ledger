@@ -148,8 +148,11 @@ public class NodeService implements UDPService {
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
 
+        
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
-
+        
+        System.out.println(message);
+        
         String value = prePrepareMessage.getValue();
 
         LOGGER.log(Level.INFO,
@@ -384,6 +387,8 @@ public class NodeService implements UDPService {
                         }).start();
                     }
                 } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }).start();

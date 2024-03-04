@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -20,7 +22,7 @@ public class Node {
     public static void main(String[] args) {
 
         try {
-            // Command line arguments
+
             String id = args[0];
             nodesConfigPath += args[1];
 
@@ -42,6 +44,15 @@ public class Node {
                     nodeConfigs);
 
             nodeService.listen();
+
+            Thread.sleep(500);
+
+
+            if(nodeConfig.isLeader()) {
+                nodeService.startConsensus("aa");
+            }
+
+            Thread.sleep(10000);
 
         } catch (Exception e) {
             e.printStackTrace();
