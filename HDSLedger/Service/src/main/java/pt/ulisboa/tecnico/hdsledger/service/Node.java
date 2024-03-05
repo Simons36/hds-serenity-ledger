@@ -2,8 +2,6 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
-import pt.ulisboa.tecnico.hdsledger.communication.Message;
-import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -17,7 +15,7 @@ public class Node {
 
     private static final CustomLogger LOGGER = new CustomLogger(Node.class.getName());
     // Hardcoded path to files
-    private static String nodesConfigPath = "src/main/resources/";
+    private static String nodesConfigPath = "../Common/src/main/resources/";
 
     public static void main(String[] args) {
 
@@ -45,9 +43,10 @@ public class Node {
 
             nodeService.listen();
 
+            //TODO: remove next lines
             Thread.sleep(500);
 
-
+            
             if(nodeConfig.isLeader()) {
                 nodeService.startConsensus("aa");
             }

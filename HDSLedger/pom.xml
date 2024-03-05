@@ -13,6 +13,8 @@
         <module>Utilities</module>
         <module>Communication</module>
         <module>Cryptolib</module>
+        <module>Client</module>
+        <module>Common</module>
     </modules>
 
 </project>

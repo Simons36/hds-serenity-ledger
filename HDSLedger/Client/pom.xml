@@ -9,10 +9,10 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>Service</artifactId>
+    <artifactId>Client</artifactId>
 
     <properties>
-        <mainClass>pt.ulisboa.tecnico.hdsledger.service.Node</mainClass>
+        <mainClass>pt.ulisboa.tecnico.hdsledger.client.Client</mainClass>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>17</maven.compiler.source>

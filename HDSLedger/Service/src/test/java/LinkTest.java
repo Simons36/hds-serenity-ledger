@@ -12,7 +12,7 @@ public class LinkTest {
     @Test
     public void testSomething() {
 
-        // create two nodes
+        // create three nodes
 
         new Thread(() -> {
             SpawnNewNode("1", "regular_config.json");
@@ -20,6 +20,10 @@ public class LinkTest {
 
         new Thread(() -> {
             SpawnNewNode("2", "regular_config.json");
+        }).start();
+
+        new Thread(() -> {
+            SpawnNewNode("3", "regular_config.json");
         }).start();
 
 
