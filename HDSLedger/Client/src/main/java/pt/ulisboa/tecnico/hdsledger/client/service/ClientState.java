@@ -8,7 +8,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ClientException;
 public class ClientState {
     
     //Id of this client
-    private final int clientId;
+    private final String clientId;
     //Service that will be used for node communication
     private final ClientService clientService;
     //Sending policy to be used
@@ -16,9 +16,9 @@ public class ClientState {
     //Counter to keep track of sent messages for message IDs
     private int messageCounter = 0;
 
-    public ClientState(String configPath, int port, String sendingPolicy, String clientId) {
+    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) {
         
-        this.clientId = Integer.parseInt(clientId);
+        this.clientId = clientId;
         
         switch (sendingPolicy) {
             case "all":
@@ -35,7 +35,7 @@ public class ClientState {
                 
         }
 
-        this.clientService = new ClientService(configPath, port, this);
+        this.clientService = new ClientService(configPath, ipAddress, port, this);
 
         startListening();
         
@@ -55,7 +55,7 @@ public class ClientState {
                 break;
         
             default:
-                break;
+                throw new RuntimeException("Sending policy not implemented yet.");
         }
     }
 
