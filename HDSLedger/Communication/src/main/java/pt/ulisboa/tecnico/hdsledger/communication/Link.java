@@ -279,9 +279,12 @@ public class Link {
             return message;
         }
 
+        
         // It's not an ACK -> Deserialize for the correct type
-        if (!local && !message.getType().equals(Message.Type.IGNORE)){}
-        message = new Gson().fromJson(messageJson, this.messageClass);
+        if (!local && !message.getType().equals(Message.Type.IGNORE)){
+            message = new Gson().fromJson(messageJson, this.messageClass);
+            
+        }
 
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
@@ -289,7 +292,6 @@ public class Link {
         if (isRepeated) {
             message.setType(Message.Type.IGNORE);
         }
-        System.out.println(message.getType());
 
         switch (message.getType()) {
             case PRE_PREPARE -> {
@@ -325,7 +327,10 @@ public class Link {
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            unreliableSend(address, port, responseMessage, new SignatureStruct(responseMessage.toString().getBytes()));
+            SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
+
+
+            unreliableSend(address, port, responseMessage, signature);
         }
         
         return message;
