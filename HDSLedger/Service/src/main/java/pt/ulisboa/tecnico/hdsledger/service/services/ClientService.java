@@ -47,9 +47,9 @@ public class ClientService implements UDPService{
 
                         // Separate thread to handle each message
                         new Thread(() -> {
-
+                            
                             switch (message.getType()) {
-
+                                
                                 case APPEND -> {
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received APPEND message from {1}",
                                             thisNodeConfig.getId(), message.getSenderId()));
@@ -61,7 +61,7 @@ public class ClientService implements UDPService{
 
 
                                     // Invoke consensus algorithm
-                                    //TODO: remove this comment: nodeService.startConsensus(appendMessage.getValue());
+                                    nodeService.startConsensus(appendMessage.getValue());
                                 }
 
 

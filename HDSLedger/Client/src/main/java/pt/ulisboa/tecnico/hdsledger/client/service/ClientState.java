@@ -59,7 +59,7 @@ public class ClientState {
                 try {
 
                     ConsensusMessage appendMessage = new ConsensusMessageBuilder(clientId, Message.Type.APPEND)
-                                                        .setMessage(content)
+                                                        .setMessage(new AppendMessage(content).toJson())
                                                         .build();
 
                     clientService.broadcast(appendMessage);

@@ -42,15 +42,14 @@ public class Link {
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
     // Create library to call for cryptographic operations
     private final CryptoLibrary cryptoLibrary;
-    // States whether this link is used for client to node communication (no authentication of messages) 
-    // or for node to node communication (need to use digital signatures) 
-    private final boolean messageAuthenticationNeeded;
+    // States whether this link is used for client to node communication or for node to node communication 
+    private final boolean isForNodeToNodeCommunication;
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded) {
         this(self, port, nodes, messageClass, messageAuthenticationNeeded, false, 200);
     }
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded,
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean isForNodeToNodeCommunication,
             boolean activateLogs, int baseSleepTime) {
         
 
@@ -58,7 +57,7 @@ public class Link {
         this.messageClass = messageClass;
         this.BASE_SLEEP_TIME = baseSleepTime;
 
-        this.messageAuthenticationNeeded = messageAuthenticationNeeded;
+        this.isForNodeToNodeCommunication = isForNodeToNodeCommunication;
 
         Arrays.stream(nodes).forEach(node -> {
             String id = node.getId();
@@ -75,7 +74,7 @@ public class Link {
             LogManager.getLogManager().reset();
         }
 
-        if(this.messageAuthenticationNeeded){
+        if(this.isForNodeToNodeCommunication){
 
             //add private key and public keys to the crypto library
             try {
@@ -133,12 +132,20 @@ public class Link {
 
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());
-                int destPort = node.getPort();
+
+                destAddress = InetAddress.getByName(node.getHostname());
+                
+                int destPort;
+                //need to select correct port
+                if(isForNodeToNodeCommunication){
+                    destPort = node.getPort();
+                }else{
+                    destPort = node.getClientRequestPort();
+                }
                 int count = 1;
                 int messageId = data.getMessageId();
                 int sleepTime = BASE_SLEEP_TIME;
 
-                SignatureStruct signature = cryptoLibrary.sign(data.toString().getBytes());
 
                 // Send message to local queue instead of using network if destination in self
                 if (nodeId.equals(this.config.getId())) {
@@ -155,9 +162,16 @@ public class Link {
                     LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
+
+                    if(isForNodeToNodeCommunication){
+
+                        //print base 64 bytes of date
+                        unreliableSend(destAddress, destPort, data, cryptoLibrary.sign(data.toString().getBytes()));
+                    }else{
+                        unreliableSend(destAddress, destPort, data);
+
+                    }
                     
-                    //print base 64 bytes of date
-                    unreliableSend(destAddress, destPort, data, signature);
 
                     // Wait (using exponential back-off), then look for ACK
                     Thread.sleep(sleepTime);
@@ -277,22 +291,23 @@ public class Link {
             //if it doesn't, we will assume the message is from the local network and not verify the authentication
             
             //print messageJson
-            
-            if (messageJson.has("digital_signature")) {
-                //we will now remove the authentication field and verify the signature
-                String signature = messageJson.get("digital_signature").getAsString();
-                messageJson.remove("digital_signature");
-                
-                message = new Gson().fromJson(messageJson, Message.class);
 
-                byte[] signatureBytes = Base64.getDecoder().decode(signature);
+            if (isForNodeToNodeCommunication){
 
-                
-                //we will now convert the json back to bytes and verify the signature
-                byte[] messageBytes = message.toString().getBytes();
-
-                if(messageAuthenticationNeeded){
-
+                if (messageJson.has("digital_signature")) {
+                    //we will now remove the authentication field and verify the signature
+                    String signature = messageJson.get("digital_signature").getAsString();
+                    messageJson.remove("digital_signature");
+                    
+                    message = new Gson().fromJson(messageJson, Message.class);
+    
+                    byte[] signatureBytes = Base64.getDecoder().decode(signature);
+    
+                    
+                    //we will now convert the json back to bytes and verify the signature
+                    byte[] messageBytes = message.toString().getBytes();
+    
+    
                     try {
                         
                         if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
@@ -305,20 +320,29 @@ public class Link {
                     } catch (Exception e) {
                         throw e;
                     }
-
+    
+    
+                }else{
+                    message = new Gson().fromJson(messageJson, Message.class);
+                    message.setType(Message.Type.IGNORE);
                 }
-                
 
             }else{
                 message = new Gson().fromJson(messageJson, Message.class);
-                message.setType(Message.Type.IGNORE);
             }
+            
 
         }
 
         
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
+
+        System.out.println(senderId);
+
+        for(String id : nodes.keySet()){
+            System.out.println(id);
+        }
         
         if (!nodes.containsKey(senderId))
         throw new HDSSException(ErrorMessage.NoSuchNode);
@@ -332,7 +356,7 @@ public class Link {
 
         
         // It's not an ACK -> Deserialize for the correct type
-        if (!local && !message.getType().equals(Message.Type.IGNORE)){
+        if ((!local && !message.getType().equals(Message.Type.IGNORE))){
             message = new Gson().fromJson(messageJson, this.messageClass);
             
         }
@@ -379,7 +403,7 @@ public class Link {
             // Even if a node receives the message multiple times,
             // it will discard duplicates
 
-            if(messageAuthenticationNeeded){
+            if(isForNodeToNodeCommunication){
                 SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
                 unreliableSend(address, port, responseMessage, signature);
             }else{
@@ -389,6 +413,8 @@ public class Link {
 
 
         }
+
+        System.out.println(((ConsensusMessage) message).getMessage());
         
         return message;
     }

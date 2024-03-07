@@ -1,7 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 
 import pt.ulisboa.tecnico.hdsledger.client.cli.CommandLineInterface;
-import pt.ulisboa.tecnico.hdsledger.client.service.ClientService;
 import pt.ulisboa.tecnico.hdsledger.client.service.ClientState;
 
 public class Client {

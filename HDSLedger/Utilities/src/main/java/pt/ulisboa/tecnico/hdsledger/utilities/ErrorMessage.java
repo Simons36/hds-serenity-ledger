@@ -7,7 +7,8 @@ public enum ErrorMessage {
     SocketSendingError("Error while sending message"),
     CannotOpenSocket("Error while opening socket"),
     ErrorImportingPrivateKey("The private key is not available at the path supplied"),
-    InvalidSignature("The signature is invalid");
+    InvalidSignature("The signature is invalid"),
+    DebugMessage("Debug message");
 
     private final String message;
 

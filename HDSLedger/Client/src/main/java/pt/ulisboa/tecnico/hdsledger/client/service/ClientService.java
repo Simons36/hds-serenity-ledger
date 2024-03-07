@@ -82,11 +82,8 @@ public class ClientService implements UDPService {
     @Override
     public void broadcast(ConsensusMessage consensusMessage) {
 
-        for (ProcessConfig node : nodes) {
+        System.out.println("Broadcasting message.");
 
-            System.out.println("Sending message to node " + node.getId() + " at " + node.getHostname() + ":" + node.getPort() + ".");
-
-            linkToNodes.broadcast((Message) consensusMessage);
-        }
+        linkToNodes.broadcast(consensusMessage);
     }
 }
