@@ -31,6 +31,10 @@ public class ConsensusMessage extends Message {
         return new Gson().fromJson(this.message, CommitMessage.class);
     }
 
+    public AppendMessage deserializeAppendMessage() {
+        return new Gson().fromJson(this.message, AppendMessage.class);
+    }
+
     public String getMessage() {
         return message;
     }

@@ -1,9 +1,13 @@
 package pt.ulisboa.tecnico.hdsledger.client.service;
 
 import pt.ulisboa.tecnico.hdsledger.client.enums.RequestSendingPolicy;
-import pt.ulisboa.tecnico.hdsledger.common.models.AppendMessage;
-import pt.ulisboa.tecnico.hdsledger.utilities.ClientErrorMessage;
-import pt.ulisboa.tecnico.hdsledger.utilities.ClientException;
+import pt.ulisboa.tecnico.hdsledger.client.exceptions.ErrorCommunicatingWithNode;
+import pt.ulisboa.tecnico.hdsledger.client.exceptions.IncorrectSendingPolicyException;
+import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
 public class ClientState {
     
@@ -31,11 +35,11 @@ public class ClientState {
                 this.sendingPolicy = RequestSendingPolicy.ONE;
                 break;
             default:
-                throw new ClientException(ClientErrorMessage.IncorrectSendingPolicy);
+                throw new IncorrectSendingPolicyException(sendingPolicy);
                 
         }
 
-        this.clientService = new ClientService(configPath, ipAddress, port, this);
+        this.clientService = new ClientService(configPath, clientId, ipAddress, port, this);
 
         startListening();
         
@@ -51,7 +55,19 @@ public class ClientState {
         
         switch (sendingPolicy) {
             case ALL:
-                clientService.broadcast(new AppendMessage(String.valueOf(this.messageCounter), content, content));
+
+                try {
+
+                    ConsensusMessage appendMessage = new ConsensusMessageBuilder(clientId, Message.Type.APPEND)
+                                                        .setMessage(content)
+                                                        .build();
+
+                    clientService.broadcast(appendMessage);
+                    
+                } catch (ErrorCommunicatingWithNode e) {
+                    System.out.println(e.getMessage());
+                }
+
                 break;
         
             default:

@@ -1,15 +1,14 @@
 package pt.ulisboa.tecnico.hdsledger.client.service;
 
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.net.UnknownHostException;
+import java.util.Arrays;
 
-import pt.ulisboa.tecnico.hdsledger.common.models.AppendMessage;
-import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
-import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
+import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 
 /**
  * Service that implements listen from UDPService; it will serve to oth send
@@ -19,27 +18,39 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
  */
 public class ClientService implements UDPService {
 
+    //self config
+    private final ProcessConfig selfConfig;
     // list with information about all nodes
     private final ProcessConfig[] nodes;
     // port this client will use to communicate
     private final int port;
     // Class that handles client business logic
     private final ClientState clientState;
-    // Socket to be used for communication
-    private final DatagramSocket socket;
+    // Link that will be used to communicate with the nodes
+    private final Link linkToNodes;
 
-    public ClientService(String processConfigPath, String ipAddress, final int port, ClientState clientState) {
+    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState) {
 
-        this.nodes = new ProcessConfigBuilder().fromFile(processConfigPath);
+        ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(processConfigPath);
+
+        // Filter node configs and put them in nodes
+        this.nodes = Arrays.stream(allConfigs)
+                .filter(processConfig -> TypeOfProcess.node.equals(processConfig.getType()))
+                .toArray(ProcessConfig[]::new);
+
+        // Get self config
+        this.selfConfig = Arrays.stream(allConfigs)
+                .filter(c -> c.getId().equals(clientId))
+                .findAny().orElse(null);
+            
+
         this.port = port;
         this.clientState = clientState;
 
-        try {
-            // Create a socket to be used for communication
-            this.socket = new DatagramSocket(port, InetAddress.getByName(ipAddress));
-        } catch (UnknownHostException | SocketException e) {
-            throw new HDSSException(ErrorMessage.CannotOpenSocket);
-        }
+        //get self config from 
+
+        this.linkToNodes = new Link(this.selfConfig, port, nodes, null, false);
+        
     }
 
     /**
@@ -69,7 +80,13 @@ public class ClientService implements UDPService {
      * @param appendMessage
      */
     @Override
-    public void broadcast(AppendMessage appendMessage) {
-        // TODO
+    public void broadcast(ConsensusMessage consensusMessage) {
+
+        for (ProcessConfig node : nodes) {
+
+            System.out.println("Sending message to node " + node.getId() + " at " + node.getHostname() + ":" + node.getPort() + ".");
+
+            linkToNodes.broadcast((Message) consensusMessage);
+        }
     }
 }

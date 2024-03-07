@@ -2,10 +2,12 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.service.services.ClientService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 
 import java.text.MessageFormat;
 import java.util.Arrays;
@@ -25,9 +27,29 @@ public class Node {
             nodesConfigPath += args[1];
 
             // Create configuration instances
-            ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
-            ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
-            ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
+            ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            
+            // ---- Filter out process configs that aren't from type "node" and put them in clientConfigs ---- //
+            ProcessConfig[] clientConfigs = Arrays.stream(allConfigs)
+            .filter(processConfig -> !TypeOfProcess.node.equals(processConfig.getType()))
+            .toArray(ProcessConfig[]::new);
+            
+
+            // Now put the nodes configs in nodeConfigs
+            ProcessConfig[] nodeConfigs = Arrays.stream(allConfigs)
+            .filter(processConfig -> TypeOfProcess.node.equals(processConfig.getType()))
+            .toArray(ProcessConfig[]::new);
+
+            // Get the leader config
+            ProcessConfig leaderConfig = Arrays.stream(nodeConfigs)
+            .filter(ProcessConfig::isLeader)
+            .findAny().orElse(null);
+
+            // Get this node config
+            ProcessConfig nodeConfig = Arrays.stream(nodeConfigs)
+            .filter(c -> c.getId().equals(id))
+            .findAny().orElse(null);
+
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
@@ -35,7 +57,7 @@ public class Node {
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
-                    ConsensusMessage.class);
+                    ConsensusMessage.class, true);
 
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
@@ -43,15 +65,24 @@ public class Node {
 
             nodeService.listen();
 
-            //TODO: remove next lines
-            Thread.sleep(500);
 
-            
-            if(nodeConfig.isLeader()) {
-                nodeService.startConsensus("aa");
-            }
+            // Link that will be used for client <-> node communication
+            Link linkToClients = new Link(nodeConfig, nodeConfig.getClientRequestPort(), clientConfigs,
+                    ConsensusMessage.class, false);
 
-            Thread.sleep(10000);
+            // Service that will be used for client communication; it needs to take nodeService to be able to make calls
+            // to consensus algorithm and respond to clients
+            ClientService clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeService);
+
+            clientService.listen();
+
+            // //TODO: remove next lines
+            // Thread.sleep(500);
+
+            // if(nodeConfig.isLeader()) {
+            // nodeService.startConsensus("aa");
+            // }
+
 
         } catch (Exception e) {
             e.printStackTrace();

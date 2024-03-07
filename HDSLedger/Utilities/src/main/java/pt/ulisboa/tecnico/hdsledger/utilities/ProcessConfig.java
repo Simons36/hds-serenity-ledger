@@ -1,7 +1,11 @@
 package pt.ulisboa.tecnico.hdsledger.utilities;
 
+import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
+
 public class ProcessConfig {
     public ProcessConfig() {}
+
+    private TypeOfProcess type;
 
     private boolean isLeader;
 
@@ -11,9 +15,20 @@ public class ProcessConfig {
 
     private int port;
 
+    private int clientRequestPort;
+
     private String privateKeyPath;
 
     private String publicKeyPath;
+
+    public void setType(TypeOfProcess type) {
+        this.type = type;
+    }
+
+    //get the type of the process
+    public TypeOfProcess getType() {
+        return type;
+    }
 
     public boolean isLeader() {
         return isLeader;
@@ -21,6 +36,10 @@ public class ProcessConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public int getClientRequestPort() {
+        return clientRequestPort;
     }
 
     public String getId() {

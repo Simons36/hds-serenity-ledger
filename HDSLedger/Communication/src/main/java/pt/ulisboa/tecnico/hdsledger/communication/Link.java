@@ -42,18 +42,23 @@ public class Link {
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
     // Create library to call for cryptographic operations
     private final CryptoLibrary cryptoLibrary;
+    // States whether this link is used for client to node communication (no authentication of messages) 
+    // or for node to node communication (need to use digital signatures) 
+    private final boolean messageAuthenticationNeeded;
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
-        this(self, port, nodes, messageClass, false, 200);
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded) {
+        this(self, port, nodes, messageClass, messageAuthenticationNeeded, false, 200);
     }
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded,
             boolean activateLogs, int baseSleepTime) {
         
 
         this.config = self;
         this.messageClass = messageClass;
         this.BASE_SLEEP_TIME = baseSleepTime;
+
+        this.messageAuthenticationNeeded = messageAuthenticationNeeded;
 
         Arrays.stream(nodes).forEach(node -> {
             String id = node.getId();
@@ -70,19 +75,27 @@ public class Link {
             LogManager.getLogManager().reset();
         }
 
-        //add private key and public keys to the crypto library
-        try {
+        if(this.messageAuthenticationNeeded){
 
-            this.cryptoLibrary = new CryptoLibrary("../" + config.getPrivateKeyPath());
-
-            for (ProcessConfig node : nodes) {
-                this.cryptoLibrary.addPublicKey(node.getId(), "../" + node.getPublicKeyPath());
+            //add private key and public keys to the crypto library
+            try {
+    
+                this.cryptoLibrary = new CryptoLibrary("../" + config.getPrivateKeyPath());
+    
+                for (ProcessConfig node : nodes) {
+                    this.cryptoLibrary.addPublicKey(node.getId(), "../" + node.getPublicKeyPath());
+                }
+    
+            } catch (Exception e) {
+                e.printStackTrace();
+                throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
             }
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
+        }else{
+            this.cryptoLibrary = null;
+        
         }
+
     }
 
     public void ackAll(List<Integer> messageIds) {
@@ -164,10 +177,11 @@ public class Link {
         }).start();
     }
 
-    /*
+    /**
      * Sends a message to a specific node without guarantee of delivery
      * Mainly used to send ACKs, if they are lost, the original message will be
-     * resent
+     * resent. If a authentication type is provided, this method will append
+     * to the message that authentication type
      *
      * @param address The address of the destination node
      *
@@ -187,6 +201,38 @@ public class Link {
                 //then add field for authentication, stored as base64 string
                 String signatureBase64 = Base64.getEncoder().encodeToString(authentication.getContent());
                 messageJson.addProperty(authentication.getAuthenticationTypeName(), signatureBase64);
+
+                //finally, convert the json to bytes and send it
+                byte[] buf = messageJson.toString().getBytes();
+                DatagramPacket packet = new DatagramPacket(buf, buf.length, hostname, port);
+                socket.send(packet);
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new HDSSException(ErrorMessage.SocketSendingError);
+            }
+        }).start();
+    }
+
+    /**
+     * Sends a message to a specific node without guarantee of delivery
+     * Mainly used to send ACKs, if they are lost, the original message will be
+     * resent.
+     *
+     * @param address The address of the destination node
+     *
+     * @param port The port of the destination node
+     *
+     * @param data The message to be sent
+     */
+    public void unreliableSend(InetAddress hostname, int port, Message data) {
+        new Thread(() -> {
+            try {
+
+                //we will take the authentication used (e.g., MAC or digital signature) and insert it into the message 
+                
+                //first create json of the message
+                JsonObject messageJson = new Gson().toJsonTree(data).getAsJsonObject();
 
                 //finally, convert the json to bytes and send it
                 byte[] buf = messageJson.toString().getBytes();
@@ -244,19 +290,24 @@ public class Link {
                 
                 //we will now convert the json back to bytes and verify the signature
                 byte[] messageBytes = message.toString().getBytes();
-                
-                try {
-                    
-                    if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
-                        LOGGER.log(Level.INFO, "Invalid signature! Ignoring message with message ID " + messageJson.get("messageId").getAsInt());
-                        message.setType(Message.Type.IGNORE);
 
+                if(messageAuthenticationNeeded){
+
+                    try {
                         
+                        if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
+                            LOGGER.log(Level.INFO, "Invalid signature! Ignoring message with message ID " + messageJson.get("messageId").getAsInt());
+                            message.setType(Message.Type.IGNORE);
+    
+                            
+                        }
+    
+                    } catch (Exception e) {
+                        throw e;
                     }
 
-                } catch (Exception e) {
-                    throw e;
                 }
+                
 
             }else{
                 message = new Gson().fromJson(messageJson, Message.class);
@@ -327,10 +378,16 @@ public class Link {
             // we're assuming an eventually synchronous network
             // Even if a node receives the message multiple times,
             // it will discard duplicates
-            SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
+
+            if(messageAuthenticationNeeded){
+                SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
+                unreliableSend(address, port, responseMessage, signature);
+            }else{
+                unreliableSend(address, port, responseMessage);
+            }
 
 
-            unreliableSend(address, port, responseMessage, signature);
+
         }
         
         return message;
