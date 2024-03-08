@@ -1,3 +1,5 @@
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -26,7 +28,7 @@ public class LinkTest {
             SpawnNewNode("3", "regular_config.json");
         }).start();
 
-
+        Delay(15000);
     }
 
     private void SpawnNewNode(String nodeId, String configFile) {
@@ -37,11 +39,22 @@ public class LinkTest {
 
         try {
             Process process = builder.inheritIO().start();
-            process.waitFor();
+            process.waitFor(13, TimeUnit.SECONDS);
+            process.destroy();
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+    }
+
+    private void Delay(int time) {
+        long T0 = System.currentTimeMillis();
+        long T1;
+        long runTime = 0;
+        while (runTime < time) {
+            T1 = System.currentTimeMillis();
+            runTime = T1 - T0;
+        }
     }
 }
