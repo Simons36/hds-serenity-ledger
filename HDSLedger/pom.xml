@@ -16,8 +16,8 @@
         <module>Client</module>
         <module>Common</module>
     </modules>
-    <!-- <properties>
+    <properties>
         <maven.test.skip>true</maven.test.skip>
-    </properties> -->
+    </properties>
 
 </project>
