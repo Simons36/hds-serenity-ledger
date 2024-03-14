@@ -7,7 +7,7 @@ import java.io.OutputStreamWriter;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AppendTest {
+public class Append {
     private final String terminal = "kitty";
 
     @Before

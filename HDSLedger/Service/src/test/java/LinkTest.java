@@ -25,6 +25,9 @@ public class LinkTest {
         new Thread(() -> {
             SpawnNewNode("3", "regular_config.json");
         }).start();
+        new Thread(() -> {
+            SpawnNewNode("4", "regular_config.json");
+        }).start();
 
 
     }
