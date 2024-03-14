@@ -16,7 +16,7 @@ public class Message implements Serializable {
     private byte[] signature;
 
     public enum Type {
-        APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
+        APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE, ROUND_CHANGE;
     }
 
     public Message(String senderId, Type type) {

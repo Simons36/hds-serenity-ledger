@@ -1,13 +1,18 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.swing.text.html.Option;
+
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
 public class MessageBucket {
@@ -60,6 +65,9 @@ public class MessageBucket {
     public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
+
+        
+
         bucket.get(instance).get(round).values().forEach((message) -> {
             CommitMessage commitMessage = message.deserializeCommitMessage();
             String value = commitMessage.getValue();
@@ -73,6 +81,111 @@ public class MessageBucket {
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
+    }
+
+    /**
+     * This function checks if there is a valid round change quorum; returns
+     * prepared round of that quorum
+     * 
+     * @param instance
+     * @param round
+     * @return
+     */
+    public Optional<Integer> hasValidRoundChangeQuorum(int instance, int round) {
+
+        // in round change messages we don't have to only consider the value;
+        // we have to check for prepared round and prepared value
+
+        // The keys of this hashmap will be string arrays of the format: [preparedValue,
+        // preparedRound]
+        HashMap<String[], Integer> frequency = new HashMap<>();
+
+        // Check if bucket has the instance and round
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            return Optional.empty();
+        }
+
+        // Create mapping of [value, round] to frequency
+        bucket.get(instance).get(round).values().forEach((message) -> {
+            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+
+            // get the prepared value and round from the message
+            String preparedValue = roundChangeMessage.getPreparedValue();
+            int preparedRound = roundChangeMessage.getPreparedRound();
+
+            String[] key = { preparedValue, Integer.toString(preparedRound) };
+            frequency.put(key, frequency.getOrDefault(key, 0) + 1);
+        });
+
+        // Only one value (if any, thus the optional) will have a frequency
+        // greater than or equal to the quorum size
+        return frequency.entrySet().stream().filter((Map.Entry<String[], Integer> entry) -> {
+            return entry.getValue() >= quorumSize;
+        }).map((Map.Entry<String[], Integer> entry) -> {
+            return Integer.valueOf(entry.getKey()[1]); // we only return the prepared round
+        }).findFirst();
+    }
+
+    public Optional<List<List<ConsensusMessage>>> getJustificationQuorumsFromRoundChange(int instance, int round) {
+
+        // We will go through every round change message received for this instance and
+        // round and return all of the justifications
+
+        List<List<ConsensusMessage>> justificationList = new ArrayList<>();
+
+        // Check if bucket has the instance and round
+        if (bucket.get(instance) == null || bucket.get(instance).get(round) == null) {
+            return Optional.empty();
+        }
+
+        bucket.get(instance).get(round).values().forEach((message) -> {
+            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+            List<ConsensusMessage> justification = roundChangeMessage.getJustification();
+
+            if (!justification.isEmpty()) {
+
+                // if justification doesnt contain a quorum of prepare messages, we ignore it
+                if (justification.size() >= quorumSize) {
+                    justificationList.add(justification);
+                }
+
+            }
+
+        });
+
+        if (justificationList.size() == 0) {
+            return Optional.empty();
+        }
+
+        return Optional.of(justificationList);
+
+    }
+
+    /**
+     * Helper function that returns a tuple (pr, pv) where pr and pv are, respectively, the prepared round
+     * and the prepared value of the ROUND-CHANGE message in received round change messages with the highest prepared round
+     */
+    public String[] HighestPreparedFromRoundChangeMessages(int instance, int round) {
+
+        // We will go through every round change message received for this instance and
+        // round and return the one with the highest prepared round
+
+        int highestPreparedRound = -1;
+        String highestPreparedValue = null;
+
+        for (ConsensusMessage message : bucket.get(instance).get(round).values()) {
+            RoundChangeMessage roundChangeMessage = message.deserializeRoundChangeMessage();
+            int preparedRound = roundChangeMessage.getPreparedRound();
+
+            if (preparedRound > highestPreparedRound) {
+                highestPreparedRound = preparedRound;
+                highestPreparedValue = roundChangeMessage.getPreparedValue();
+            }
+        }
+
+        String[] result = { Integer.toString(highestPreparedRound), highestPreparedValue };
+        return result;
+
     }
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {

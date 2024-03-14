@@ -1,7 +1,11 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
+import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 
 public class InstanceInfo {
 
@@ -11,6 +15,9 @@ public class InstanceInfo {
     private CommitMessage commitMessage;
     private String inputValue;
     private int committedRound = -1;
+
+    //Timer with time left for current round to expire
+    private RoundTimer roundTimer;
 
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
@@ -63,4 +70,17 @@ public class InstanceInfo {
     public void setCommitMessage(CommitMessage commitMessage) {
         this.commitMessage = commitMessage;
     }
+
+    public void StartTimerForCurrentRound(int secondsToReset, int consensusInstance, NodeService nodeService){
+        roundTimer = new RoundTimer(secondsToReset, currentRound, consensusInstance,  nodeService);
+    }
+
+    public void cancelTimer(){
+        roundTimer.cancelTimer();
+    }
+
+    public int incrementRound(){
+        return ++currentRound;
+    }
+
 }
