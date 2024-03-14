@@ -7,13 +7,13 @@ import java.io.OutputStreamWriter;
 import org.junit.Before;
 import org.junit.Test;
 
-public class Append {
+public class RoundChange {
     private final String terminal = "kitty";
 
     @Before
     public void setUp() {
         new Thread(() -> {
-            SpawnNewNode("1", "regular_config.json");
+            SpawnFaultyNode("1", "regular_config.json");
         }).start();
     
         new Thread(() -> {
@@ -36,7 +36,7 @@ public class Append {
         }).start();
 
         /* to give time to show execution of the append command working and to terminate all the processes so we can set up for the next test */
-        Delay(20000);
+        Delay(35000);
     }
 
     private void SpawnNewNode(String nodeId, String configFile) {
@@ -46,7 +46,24 @@ public class Append {
 
         try {
             Process process = builder.inheritIO().start();
-            process.waitFor(13, TimeUnit.SECONDS);
+            process.waitFor(31, TimeUnit.SECONDS);
+            process.destroy(); 
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    private void SpawnFaultyNode(String nodeId, String configFile) {
+
+        ProcessBuilder builder = new ProcessBuilder(terminal, "--", "sh", "-c",
+                "mvn exec:java -Dexec.args=\"" + nodeId + " " + configFile + "\"");
+
+        try {
+            Process process = builder.inheritIO().start();
+            process.waitFor(10, TimeUnit.SECONDS);
+            System.out.println("Leader (node 1) faulty");
             process.destroy(); 
 
         } catch (Exception e) {
@@ -61,20 +78,20 @@ public class Append {
                 "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port + " " + policy + "\"");
 
         try {
-            
             Process process = builder.start();
             
-            Delay(2000);
+            /* just to guarantee the client sends an append request after the leader crashes */ 
+            Delay(11000);
 
             OutputStream outputStream = process.getOutputStream();
 
             // Write input data to the subprocess
             try (Writer writer = new OutputStreamWriter(outputStream)) {
-                String inputData = "append ola\n";
+                String inputData = "append round\n";
                 writer.write(inputData);
             }
     
-            process.waitFor(13, TimeUnit.SECONDS);
+            process.waitFor(20, TimeUnit.SECONDS);
             process.destroy();    
 
         } catch (Exception e) {

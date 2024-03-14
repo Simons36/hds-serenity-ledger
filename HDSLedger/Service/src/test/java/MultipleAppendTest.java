@@ -7,7 +7,7 @@ import java.io.OutputStreamWriter;
 import org.junit.Before;
 import org.junit.Test;
 
-public class Append {
+public class MultipleAppendTest {
     private final String terminal = "kitty";
 
     @Before
@@ -36,7 +36,7 @@ public class Append {
         }).start();
 
         /* to give time to show execution of the append command working and to terminate all the processes so we can set up for the next test */
-        Delay(20000);
+        Delay(40000);
     }
 
     private void SpawnNewNode(String nodeId, String configFile) {
@@ -46,7 +46,7 @@ public class Append {
 
         try {
             Process process = builder.inheritIO().start();
-            process.waitFor(13, TimeUnit.SECONDS);
+            process.waitFor(35, TimeUnit.SECONDS);
             process.destroy(); 
 
         } catch (Exception e) {
@@ -61,7 +61,6 @@ public class Append {
                 "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port + " " + policy + "\"");
 
         try {
-            
             Process process = builder.start();
             
             Delay(2000);
@@ -70,11 +69,14 @@ public class Append {
 
             // Write input data to the subprocess
             try (Writer writer = new OutputStreamWriter(outputStream)) {
-                String inputData = "append ola\n";
-                writer.write(inputData);
+                for (int i = 0; i < 10; i++){
+                    String inputData = "append teste_\n";
+                    writer.write(inputData);
+                    Delay(1000);
+                }
             }
     
-            process.waitFor(13, TimeUnit.SECONDS);
+            process.waitFor(25, TimeUnit.SECONDS);
             process.destroy();    
 
         } catch (Exception e) {
