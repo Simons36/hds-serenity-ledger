@@ -51,8 +51,8 @@ public class ClientService implements UDPService{
                             switch (message.getType()) {
                                 
                                 case APPEND -> {
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received APPEND message from {1}",
-                                            thisNodeConfig.getId(), message.getSenderId()));
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received APPEND message from {1} with value {2}",
+                                            thisNodeConfig.getId(), message.getSenderId(), (((ConsensusMessage) message).deserializeAppendMessage()).getValue()));
 
                                     //we now need to deserialize the message and check to get the appendMessage
 

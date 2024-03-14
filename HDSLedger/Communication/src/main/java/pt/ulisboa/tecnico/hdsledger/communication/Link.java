@@ -337,12 +337,6 @@ public class Link {
         
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
-
-        System.out.println(senderId);
-
-        for(String id : nodes.keySet()){
-            System.out.println(id);
-        }
         
         if (!nodes.containsKey(senderId))
         throw new HDSSException(ErrorMessage.NoSuchNode);
@@ -413,8 +407,6 @@ public class Link {
 
 
         }
-
-        System.out.println(((ConsensusMessage) message).getMessage());
         
         return message;
     }

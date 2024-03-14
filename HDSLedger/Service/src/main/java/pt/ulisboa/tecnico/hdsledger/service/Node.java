@@ -51,7 +51,7 @@ public class Node {
             .findAny().orElse(null);
 
 
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}\n",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
                     nodeConfig.isLeader()));
 
@@ -82,6 +82,7 @@ public class Node {
             // if(nodeConfig.isLeader()) {
             // nodeService.startConsensus("aa");
             // }
+            // nodeService.startConsensus("aa");
 
 
         } catch (Exception e) {
