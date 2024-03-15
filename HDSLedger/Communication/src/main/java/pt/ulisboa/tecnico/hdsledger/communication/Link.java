@@ -8,6 +8,7 @@ import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.structs.AuthenticationType;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.structs.SignatureStruct;
 import pt.ulisboa.tecnico.hdsledger.utilities.*;
+import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 
 import java.io.IOException;
 import java.net.*;
@@ -137,7 +138,7 @@ public class Link {
                 
                 int destPort;
                 //need to select correct port
-                if(isForNodeToNodeCommunication){
+                if(isForNodeToNodeCommunication || TypeOfProcess.node.equals(this.config.getType())){
                     destPort = node.getPort();
                 }else{
                     destPort = node.getClientRequestPort();
@@ -270,6 +271,7 @@ public class Link {
         Boolean local = false;
         DatagramPacket response = null;
         JsonObject messageJson = null;
+
         
         if (this.localhostQueue.size() > 0) {
             message = this.localhostQueue.poll();
@@ -291,23 +293,23 @@ public class Link {
             //if it doesn't, we will assume the message is from the local network and not verify the authentication
             
             //print messageJson
-
+            
             if (isForNodeToNodeCommunication){
-
+                
                 if (messageJson.has("digital_signature")) {
                     //we will now remove the authentication field and verify the signature
                     String signature = messageJson.get("digital_signature").getAsString();
                     messageJson.remove("digital_signature");
                     
                     message = new Gson().fromJson(messageJson, Message.class);
-    
+                    
                     byte[] signatureBytes = Base64.getDecoder().decode(signature);
-    
+                    
                     
                     //we will now convert the json back to bytes and verify the signature
                     byte[] messageBytes = message.toString().getBytes();
-    
-    
+                    
+                    
                     try {
                         
                         if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
@@ -316,31 +318,32 @@ public class Link {
     
                             
                         }
-    
+                        
                     } catch (Exception e) {
                         throw e;
                     }
-    
-    
+                    
+                    
                 }else{
                     message = new Gson().fromJson(messageJson, Message.class);
                     message.setType(Message.Type.IGNORE);
                 }
-
+                
             }else{
                 message = new Gson().fromJson(messageJson, Message.class);
             }
             
-
+            
         }
 
         
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
         
+        
         if (!nodes.containsKey(senderId))
-        throw new HDSSException(ErrorMessage.NoSuchNode);
-
+            throw new HDSSException(ErrorMessage.NoSuchNode);
+        
         // Handle ACKS, since it's possible to receive multiple acks from the same
         // message
         if (message.getType().equals(Message.Type.ACK)) {
@@ -354,7 +357,7 @@ public class Link {
             message = new Gson().fromJson(messageJson, this.messageClass);
             
         }
-
+        
         boolean isRepeated = !receivedMessages.get(message.getSenderId()).add(messageId);
         Type originalType = message.getType();
         // Message already received (add returns false if already exists) => Discard
@@ -368,7 +371,7 @@ public class Link {
             }
             case IGNORE -> {
                 if (!originalType.equals(Type.COMMIT))
-                    return message;
+                return message;
             }
             case PREPARE -> {
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;

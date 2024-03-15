@@ -79,6 +79,8 @@ public class Node {
             // to consensus algorithm and respond to clients
             ClientService clientService = new ClientService(linkToClients, nodeConfig, clientConfigs, nodeService);
 
+            nodeService.addClientService(clientService);
+
             clientService.listen();
 
             // //TODO: remove next lines

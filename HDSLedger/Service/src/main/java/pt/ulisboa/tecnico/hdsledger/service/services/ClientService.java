@@ -6,8 +6,10 @@ import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.LedgerUpdateMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -92,6 +94,18 @@ public class ClientService implements UDPService{
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void broadcastLedgerUpdate(String value, int consensusInstance){
+
+        LedgerUpdateMessage ledgerUpdateMessage = new LedgerUpdateMessage(value);
+
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(thisNodeConfig.getId(), Message.Type.LEDGER_UPDATE)
+                .setMessage(ledgerUpdateMessage.toJson())
+                .setConsensusInstance(consensusInstance)
+                .build();
+
+        linkToClients.broadcast(consensusMessage);
     }
     
 }

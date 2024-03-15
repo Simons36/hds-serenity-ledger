@@ -62,6 +62,9 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    // Client Service
+    private ClientService clientService;
+
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
 
@@ -86,6 +89,10 @@ public class NodeService implements UDPService {
 
     public ArrayList<String> getLedger() {
         return this.ledger;
+    }
+
+    public void addClientService(ClientService clientService){
+        this.clientService = clientService;
     }
 
     private boolean isLeader(String id, int instance) {
@@ -390,10 +397,14 @@ public class NodeService implements UDPService {
 
                 ledger.add(consensusInstance - 1, value);
 
+            
                 LOGGER.log(Level.INFO,
                         MessageFormat.format(
                                 "{0} - Current Ledger: {1}",
                                 config.getId(), String.join("", ledger)));
+
+                // need to inform clients of ledger change
+                clientService.broadcastLedgerUpdate(value, consensusInstance);
             }
 
             lastDecidedConsensusInstance.getAndIncrement();

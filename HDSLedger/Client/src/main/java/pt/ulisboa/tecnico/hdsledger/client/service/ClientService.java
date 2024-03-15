@@ -23,7 +23,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 public class ClientService implements UDPService {
 
     // Logger
-    private static final CustomLogger LOGGER = new CustomLogger(ClientService.class.getName());
+    private final CustomLogger LOGGER;
     //self config
     private final ProcessConfig selfConfig;
     // list with information about all nodes
@@ -34,8 +34,11 @@ public class ClientService implements UDPService {
     private final ClientState clientState;
     // Link that will be used to communicate with the nodes
     private final Link linkToNodes;
+    // Number of nodes that contitute a quorum
+    private final int quorumSize;
+    
 
-    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState) {
+    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState, CustomLogger LOGGER) {
 
         ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(processConfigPath);
 
@@ -43,6 +46,10 @@ public class ClientService implements UDPService {
         this.nodes = Arrays.stream(allConfigs)
                 .filter(processConfig -> TypeOfProcess.node.equals(processConfig.getType()))
                 .toArray(ProcessConfig[]::new);
+
+                
+        int f = Math.floorDiv(nodes.length - 1, 3);
+        quorumSize = Math.floorDiv(nodes.length + f, 2) + 1;
 
         // Get self config
         this.selfConfig = Arrays.stream(allConfigs)
@@ -55,7 +62,9 @@ public class ClientService implements UDPService {
 
         //get self config from 
 
-        this.linkToNodes = new Link(this.selfConfig, port, nodes, null, false);
+        this.linkToNodes = new Link(this.selfConfig, port, nodes, ConsensusMessage.class, false);
+
+        this.LOGGER = LOGGER;
         
     }
 
@@ -71,25 +80,48 @@ public class ClientService implements UDPService {
                     while (true) {
                         Message message = linkToNodes.receive();
 
+                        ProcessConfig sendingNode = Arrays.stream(nodes)
+                        .filter(node -> node.getId().equals(message.getSenderId()))
+                        .findAny()
+                        .orElse(null);
+
+                        if(sendingNode == null){
+                            LOGGER.log(Level.INFO, MessageFormat.format("Received message from unknown node {0}", message.getSenderId()));
+                            continue;
+                        }
+
                         // Separate thread to handle each message
                         new Thread(() -> {
                             
                             switch (message.getType()) {
 
 
-                                case ACK ->
+                                case ACK:
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
                                             this.selfConfig.getId(), message.getSenderId()));
+                                    break;
 
-                                case IGNORE ->
+                                case LEDGER_UPDATE:
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received LEDGER_UPDATE message from {1}",
+                                    this.selfConfig.getId(), message.getSenderId()));
+
+                                    this.clientState.ledgerUpdate((ConsensusMessage) message);
+                                    break;
+                                    
+
+                                case IGNORE:
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
 
-                                default ->
+                                    break;
+
+                                default:
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received unknown message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
+
+                                    break;
 
                             }
 
@@ -130,5 +162,9 @@ public class ClientService implements UDPService {
         System.out.println("Broadcasting message.");
 
         linkToNodes.broadcast(consensusMessage);
+    }
+
+    public int getQuorumSize() {
+        return quorumSize;
     }
 }
