@@ -21,6 +21,9 @@ public class ProcessConfig {
 
     private String publicKeyPath;
 
+    // Used for leader election
+    private int nodePosition;
+
     public void setType(TypeOfProcess type) {
         this.type = type;
     }
@@ -56,6 +59,14 @@ public class ProcessConfig {
     
     public String getPublicKeyPath() {
         return publicKeyPath;
+    }
+
+    public int getNodePosition() {
+        return nodePosition;
+    }
+
+    public void setNodePosition(int nodePosition) {
+        this.nodePosition = nodePosition;
     }
 
 

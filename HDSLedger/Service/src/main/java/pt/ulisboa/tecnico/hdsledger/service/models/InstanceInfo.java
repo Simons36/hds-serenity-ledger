@@ -79,6 +79,11 @@ public class InstanceInfo {
         roundTimer.cancelTimer();
     }
 
+    public void resetTimer(int secondsToReset, int consensusInstance, NodeService nodeService){
+        roundTimer.cancelTimer();
+        roundTimer = new RoundTimer(secondsToReset, currentRound, consensusInstance,  nodeService);
+    }
+
     public int incrementRound(){
         return ++currentRound;
     }

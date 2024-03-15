@@ -54,6 +54,7 @@ public class CommandLineInterface {
         }
     
         scanner.close();
+        System.exit(0);
         
 
     }

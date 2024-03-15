@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +21,13 @@ public class MessageBucket {
     private static final CustomLogger LOGGER = new CustomLogger(MessageBucket.class.getName());
     // Quorum size
     private final int quorumSize;
+    // F size
+    private final int f;
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
     public MessageBucket(int nodeCount) {
-        int f = Math.floorDiv(nodeCount - 1, 3);
+        this.f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
     }
 
@@ -159,6 +162,48 @@ public class MessageBucket {
 
         return Optional.of(justificationList);
 
+    }
+
+    /**
+     * This function will check if there are f + 1 valid round change messages for a certain instance
+     * @param instance
+     * @return Minimum round of the f + 1 valid round change messages; empty if there are not enough valid round change messages
+     */
+    public Optional<Integer> hasFPlusOneValidRoundChange(int instance, int currentRound){
+
+        // Check if bucket has the instance
+        if (bucket.get(instance) == null) {
+            return Optional.empty();
+        }
+        
+        List<Integer> roundChangeRounds = new ArrayList<>();
+
+        bucket.get(instance).keySet().forEach(key -> {
+            bucket.get(instance).get(key).values().forEach(x -> roundChangeRounds.add(key));
+        });
+
+
+        
+        //filter out rounds that are equal or smaller than the current round
+        roundChangeRounds.removeIf(round -> round <= currentRound);
+        
+        //Print roundChangeRounds
+        System.out.println("Round change rounds: " + roundChangeRounds);
+        
+        if (roundChangeRounds.size() < this.f + 1){
+            return Optional.empty();
+        }
+        
+        
+        int minRound = Integer.MAX_VALUE;
+
+        for (int round : roundChangeRounds){
+            if(round < minRound){
+                minRound = round;
+            }
+        }
+
+        return Optional.of(minRound);
     }
 
     /**
