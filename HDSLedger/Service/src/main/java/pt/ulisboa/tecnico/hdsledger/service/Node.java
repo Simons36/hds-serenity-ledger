@@ -28,6 +28,7 @@ public class Node {
 
             // Create configuration instances
             ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+
             
             // ---- Filter out process configs that aren't from type "node" and put them in clientConfigs ---- //
             ProcessConfig[] clientConfigs = Arrays.stream(allConfigs)
@@ -39,6 +40,10 @@ public class Node {
             ProcessConfig[] nodeConfigs = Arrays.stream(allConfigs)
             .filter(processConfig -> TypeOfProcess.node.equals(processConfig.getType()))
             .toArray(ProcessConfig[]::new);
+
+            for(int i = 0; i < nodeConfigs.length; i++){
+                nodeConfigs[i].setNodePosition(i + 1);
+            }
 
             // Get the leader config
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs)
