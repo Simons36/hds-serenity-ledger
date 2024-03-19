@@ -2,10 +2,10 @@ package pt.ulisboa.tecnico.hdsledger.client.cli;
 
 import java.util.Scanner;
 
-import pt.ulisboa.tecnico.hdsledger.client.enums.Commands;
+import pt.ulisboa.tecnico.hdsledger.client.enums.CommandType;
 import pt.ulisboa.tecnico.hdsledger.client.service.ClientState;
 
-import static pt.ulisboa.tecnico.hdsledger.client.enums.Commands.HELP;
+import static pt.ulisboa.tecnico.hdsledger.client.enums.CommandType.HELP;
 
 
 public class CommandLineInterface {
@@ -25,15 +25,15 @@ public class CommandLineInterface {
 
             try {
 
-                switch (Commands.fromString(commandString)) {
+                switch (CommandType.fromString(commandString)) {
     
                     case HELP:
-                        System.out.println(Commands.getHelpMessage());
+                        System.out.println(CommandType.getHelpMessage());
                         break;
     
                     case APPEND:
                         if (arguments.length < 2) {
-                            System.out.println(Commands.APPEND.getCommandUsage());
+                            System.out.println(CommandType.APPEND.getCommandUsage());
                             break;
                         }
                         clientState.SendAppendMessage(arguments[1]);

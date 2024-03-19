@@ -22,8 +22,6 @@ import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
  */
 public class ClientService implements UDPService {
 
-    // Logger
-    private final CustomLogger LOGGER;
     //self config
     private final ProcessConfig selfConfig;
     // list with information about all nodes
@@ -38,7 +36,7 @@ public class ClientService implements UDPService {
     private final int quorumSize;
     
 
-    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState, CustomLogger LOGGER) {
+    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState) {
 
         ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(processConfigPath);
 
@@ -63,8 +61,6 @@ public class ClientService implements UDPService {
         //get self config from 
 
         this.linkToNodes = new Link(this.selfConfig, port, nodes, ConsensusMessage.class, false);
-
-        this.LOGGER = LOGGER;
         
     }
 
@@ -86,7 +82,7 @@ public class ClientService implements UDPService {
                         .orElse(null);
 
                         if(sendingNode == null){
-                            LOGGER.log(Level.INFO, MessageFormat.format("Received message from unknown node {0}", message.getSenderId()));
+                            System.out.println(MessageFormat.format("Received message from unknown node {0}", message.getSenderId()));
                             continue;
                         }
 
@@ -97,12 +93,12 @@ public class ClientService implements UDPService {
 
 
                                 case ACK:
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
+                                    System.out.println(MessageFormat.format("{0} - Received ACK message from {1}",
                                             this.selfConfig.getId(), message.getSenderId()));
                                     break;
 
                                 case LEDGER_UPDATE:
-                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received LEDGER_UPDATE message from {1}",
+                                    System.out.println(MessageFormat.format("{0} - Received LEDGER_UPDATE message from {1}",
                                     this.selfConfig.getId(), message.getSenderId()));
 
                                     this.clientState.ledgerUpdate((ConsensusMessage) message);
@@ -110,15 +106,13 @@ public class ClientService implements UDPService {
                                     
 
                                 case IGNORE:
-                                    LOGGER.log(Level.INFO,
-                                            MessageFormat.format("{0} - Received IGNORE message from {1}",
+                                    System.out.println(MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
 
                                     break;
 
                                 default:
-                                    LOGGER.log(Level.INFO,
-                                            MessageFormat.format("{0} - Received unknown message from {1}",
+                                    System.out.println(MessageFormat.format("{0} - Received unknown message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
 
                                     break;

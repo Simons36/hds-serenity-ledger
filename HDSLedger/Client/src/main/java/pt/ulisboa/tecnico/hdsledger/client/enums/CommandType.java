@@ -3,17 +3,17 @@ package pt.ulisboa.tecnico.hdsledger.client.enums;
 import java.util.HashMap;
 import java.util.Map;
 
-public enum Commands {
+public enum CommandType {
 
     HELP("help", "Prints this message", ""),
-    APPEND("append", "Append a simple string to the blockchain.",  "Usage: send <message>"),
+    APPEND("append", "Append a simple string to the blockchain.",  "Usage: append <message>"),
     EXIT("exit", "Exit the application.",  "Usage: exit");
 
     private final String command;
     private final String commandDescription;
     private final String commandUsage;
 
-    Commands(String command, String commandDescription, String commandUsage) {
+    CommandType(String command, String commandDescription, String commandUsage) {
         this.command = command;
         this.commandDescription = commandDescription;
         this.commandUsage = commandUsage;
@@ -32,8 +32,8 @@ public enum Commands {
     }
 
     // Static method to create Commands enum from a string
-    public static Commands fromString(String input) {
-        for (Commands command : Commands.values()) {
+    public static CommandType fromString(String input) {
+        for (CommandType command : CommandType.values()) {
             if (command.getCommand().equalsIgnoreCase(input)) {
                 return command;
             }
@@ -44,7 +44,7 @@ public enum Commands {
 
     public static String getHelpMessage(){
         StringBuilder sb = new StringBuilder();
-        for (Commands command : Commands.values()) {
+        for (CommandType command : CommandType.values()) {
             sb.append(command.getCommand()).append(" - ").append(command.getCommandDescription()).append("\n");
         }
         sb.deleteCharAt(sb.length() - 1); // Remove last newline character (to avoid extra newline at the end of the message)
