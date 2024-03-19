@@ -1,0 +1,30 @@
+[
+    {
+        "command" : "append",
+        "arguments" : [
+            "test"
+        ]
+    },
+
+    {
+        "command" : "append",
+        "arguments" : [
+            "test2"
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            1
+        ]
+    },
+
+    {
+        "command" : "append",
+        "arguments" : [
+            "test3"
+        ]
+    }
+
+]
