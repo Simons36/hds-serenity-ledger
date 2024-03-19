@@ -10,6 +10,8 @@ public class Client {
     
     private static String configPath = "../Common/src/main/resources/";
 
+    private static String commandsPath  = "src/main/resources/";
+
     //main
     public static void main(String[] args) {
 
@@ -32,7 +34,7 @@ public class Client {
         ClientState clientState = null;
         
         if(args.length == 6){
-            clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId, args[5]);
+            clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId, commandsPath + args[5]);
         }else{
             clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId);
             CommandLineInterface.ParseInput(clientState);

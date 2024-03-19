@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import java.text.MessageFormat;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -41,7 +43,7 @@ public class ClientState {
     private Map<Integer, List<ConsensusMessage>> receivedLedgerUpdates = new HashMap<>();
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
-            String commandsFilePath) throws IncorrectSendingPolicyException, CommandsFilePathNotValidException{
+            String commandsFilePath) throws IncorrectSendingPolicyException, CommandsFilePathNotValidException {
 
         this.clientId = clientId;
 
@@ -164,8 +166,8 @@ public class ClientState {
 
     }
 
-    public void ExecuteCommands(String commandsFilePath) throws IOException{
-        
+    public void ExecuteCommands(String commandsFilePath) throws IOException {
+
         try {
             List<Command> commands = ImportCommandsFile(commandsFilePath);
 
@@ -188,6 +190,9 @@ public class ClientState {
                             e.printStackTrace();
                         }
                         break;
+                    case "write_ledger":
+                        WriteLedgerToFile((String) command.getArguments().get(0));
+                        break;
                     default:
                         System.out.println("Unknown command: " + command.getCommand());
                         break;
@@ -199,7 +204,7 @@ public class ClientState {
 
     }
 
-    private List<Command> ImportCommandsFile(String commandsFilePath) throws IOException{
+    private List<Command> ImportCommandsFile(String commandsFilePath) throws IOException {
 
         // Create a Gson object
         Gson gson = new Gson();
@@ -209,9 +214,9 @@ public class ClientState {
         }.getType();
 
         try {
-            //Read the json into a string
+            // Read the json into a string
             String json = Files.readString(Paths.get(commandsFilePath));
-            
+
             // Convert the JSON string to a list of Command objects
             return gson.fromJson(json, commandListType);
 
@@ -219,6 +224,16 @@ public class ClientState {
             throw e;
         }
 
+    }
+
+    private void WriteLedgerToFile(String ledgerFilePath) throws IOException{
+
+        String ledgerString = String.join("", ledger);
+        BufferedWriter writer = new BufferedWriter(new FileWriter(ledgerFilePath));
+
+        writer.write(ledgerString);
+
+        writer.close();
     }
 
 }

@@ -1,0 +1,38 @@
+[
+    {
+        "command" : "append",
+        "arguments" : [
+            "append1"
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            1
+        ]
+    },
+
+    {
+        "command" : "append",
+        "arguments" : [
+            "append2"
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            5
+        ]
+    },
+
+    {
+        "command" : "write_ledger",
+        "arguments" : [
+            "../Test/src/test/java/output/simple_test_output.txt"
+        ]
+    }
+
+
+]
