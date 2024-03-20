@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Before;
 import org.junit.Test;
 
 import util.Util;
@@ -25,6 +24,10 @@ public class SimpleTest {
     private final static String EXPECTED_OUTPUT = "append1append2";
 
     private List<Process> processes = new ArrayList<>();
+
+    /*
+     * This test launches all nodes and a client that sends two append requests to the nodes.
+     */
 
     
     @Test
@@ -51,6 +54,7 @@ public class SimpleTest {
 
         try {
             assertEquals(EXPECTED_OUTPUT, Files.readString(Paths.get(TEST_OUTPUT)));
+            System.out.println("Simple Test: Success");
         } catch (IOException e) {
             throw e;
         }
