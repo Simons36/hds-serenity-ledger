@@ -75,25 +75,19 @@ public class Link {
             LogManager.getLogManager().reset();
         }
 
-        if(this.isForNodeToNodeCommunication){
 
-            //add private key and public keys to the crypto library
-            try {
-    
-                this.cryptoLibrary = new CryptoLibrary("../" + config.getPrivateKeyPath());
-    
-                for (ProcessConfig node : nodes) {
-                    this.cryptoLibrary.addPublicKey(node.getId(), "../" + node.getPublicKeyPath());
-                }
-    
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
+        //add private key and public keys to the crypto library
+        try {
+
+            this.cryptoLibrary = new CryptoLibrary("../" + config.getPrivateKeyPath());
+
+            for (ProcessConfig node : nodes) {
+                this.cryptoLibrary.addPublicKey(node.getId(), "../" + node.getPublicKeyPath());
             }
 
-        }else{
-            this.cryptoLibrary = null;
-        
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
         }
 
     }
@@ -164,14 +158,8 @@ public class Link {
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
 
-                    if(isForNodeToNodeCommunication){
-
-                        //print base 64 bytes of date
-                        unreliableSend(destAddress, destPort, data, cryptoLibrary.sign(data.toString().getBytes()));
-                    }else{
-                        unreliableSend(destAddress, destPort, data);
-
-                    }
+                    
+                    unreliableSend(destAddress, destPort, data, cryptoLibrary.sign(data.toString().getBytes()));
                     
 
                     // Wait (using exponential back-off), then look for ACK
@@ -294,44 +282,41 @@ public class Link {
             
             //print messageJson
             
-            if (isForNodeToNodeCommunication){
                 
-                if (messageJson.has("digital_signature")) {
-                    //we will now remove the authentication field and verify the signature
-                    String signature = messageJson.get("digital_signature").getAsString();
-                    messageJson.remove("digital_signature");
+            if (messageJson.has("digital_signature")) {
+                //we will now remove the authentication field and verify the signature
+                String signature = messageJson.get("digital_signature").getAsString();
+                messageJson.remove("digital_signature");
+                
+                message = new Gson().fromJson(messageJson, Message.class);
+                
+                byte[] signatureBytes = Base64.getDecoder().decode(signature);
+                
+                
+                //we will now convert the json back to bytes and verify the signature
+                byte[] messageBytes = message.toString().getBytes();
+                
+                
+                try {
                     
-                    message = new Gson().fromJson(messageJson, Message.class);
-                    
-                    byte[] signatureBytes = Base64.getDecoder().decode(signature);
-                    
-                    
-                    //we will now convert the json back to bytes and verify the signature
-                    byte[] messageBytes = message.toString().getBytes();
-                    
-                    
-                    try {
+                    if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
+                        LOGGER.log(Level.INFO, "Invalid signature! Ignoring message with message ID " + messageJson.get("messageId").getAsInt());
+                        message.setType(Message.Type.IGNORE);
+
                         
-                        if (!cryptoLibrary.verifySignature(messageBytes, new SignatureStruct(signatureBytes), nodes.get(messageJson.get("senderId").getAsString()).getId())) {
-                            LOGGER.log(Level.INFO, "Invalid signature! Ignoring message with message ID " + messageJson.get("messageId").getAsInt());
-                            message.setType(Message.Type.IGNORE);
-    
-                            
-                        }
-                        
-                    } catch (Exception e) {
-                        throw e;
                     }
                     
-                    
-                }else{
-                    message = new Gson().fromJson(messageJson, Message.class);
-                    message.setType(Message.Type.IGNORE);
+                } catch (Exception e) {
+                    throw e;
                 }
+                
                 
             }else{
                 message = new Gson().fromJson(messageJson, Message.class);
+                message.setType(Message.Type.IGNORE);
             }
+                
+            
             
             
         }
@@ -400,14 +385,8 @@ public class Link {
             // Even if a node receives the message multiple times,
             // it will discard duplicates
 
-            if(isForNodeToNodeCommunication){
-                SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
-                unreliableSend(address, port, responseMessage, signature);
-            }else{
-                unreliableSend(address, port, responseMessage);
-            }
-
-
+            SignatureStruct signature = cryptoLibrary.sign(responseMessage.toString().getBytes());
+            unreliableSend(address, port, responseMessage, signature);
 
         }
         

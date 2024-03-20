@@ -24,3 +24,25 @@ do
   rm server.key
   rm *.pem
 done
+
+# Also generate for client
+
+for i in {1..1}
+do
+  private_key_file="private_id_client${i}_key.der"
+  public_key_file="public_id_client${i}_key.der"
+
+  openssl genrsa -out server.key
+
+  openssl rsa -in server.key -pubout > "public_id_client${i}_key.der"
+
+  openssl rsa -in server.key -text > "private_id_client${i}_key.pem"
+
+  openssl pkcs8 -topk8 -inform PEM -outform DER -in "private_id_client${i}_key.pem" -out "$private_key_file" -nocrypt
+
+  openssl rsa -in "private_id_client${i}_key.pem" -pubout -outform DER -out "$public_key_file"
+
+  rm server.key
+  rm *.pem
+done
+
