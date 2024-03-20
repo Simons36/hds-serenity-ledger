@@ -44,7 +44,7 @@
         "id": "client1",
         "hostname": "localhost",
         "port": 4001,
-        "privateKeyPath" : "Keystore/private_id_client1_key.der",
+        "privateKeyPath" : "Keystore/private_id_2_key.der",
         "publicKeyPath" : "Keystore/public_id_client1_key.der"
     }
 ]
