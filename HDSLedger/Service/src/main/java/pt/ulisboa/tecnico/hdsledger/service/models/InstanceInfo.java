@@ -84,6 +84,10 @@ public class InstanceInfo {
         roundTimer = new RoundTimer(secondsToReset, currentRound, consensusInstance,  nodeService);
     }
 
+    public boolean hasTimerStartedForCurrentRound(){
+        return roundTimer != null;
+    }
+
     public int incrementRound(){
         return ++currentRound;
     }

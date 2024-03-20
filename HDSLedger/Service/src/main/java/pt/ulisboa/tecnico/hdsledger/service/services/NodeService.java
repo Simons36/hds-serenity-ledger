@@ -167,22 +167,25 @@ public class NodeService implements UDPService {
             }
         }
 
+        InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
+        
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Starting timer for Consensus Instance {1}, Round {2}",
-                    config.getId(), consensusInstance, 1));
-
-            InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
+            config.getId(), consensusInstance, 1));
+            
             // Start timer
-            instance.StartTimerForCurrentRound(SECONDS_TO_RESET_TIMER, localConsensusInstance, this);
-
+            
             LOGGER.log(Level.INFO,
-                    MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+            MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
             this.link.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
-                    MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+            MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
+
+        // Start timer
+        instance.StartTimerForCurrentRound(SECONDS_TO_RESET_TIMER, localConsensusInstance, this);
     }
 
     /*
@@ -231,8 +234,8 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round));
         }
 
-        // Start timer if it is not leader (leader already started timer for this round)
-        if (!this.config.isLeader()) {
+        // Start timer if it is not leader and hadnt received origianl message
+        if (!this.config.isLeader() && !this.instanceInfo.get(consensusInstance).hasTimerStartedForCurrentRound()) {
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Starting timer for Consensus Instance {1}, Round {2}",
                     config.getId(), consensusInstance, round));
@@ -374,6 +377,7 @@ public class NodeService implements UDPService {
         Optional<String> commitValue = commitMessages.hasValidCommitQuorum(config.getId(),
                 consensusInstance, round);
 
+        
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
             // we can now stop the timer for this instance and round

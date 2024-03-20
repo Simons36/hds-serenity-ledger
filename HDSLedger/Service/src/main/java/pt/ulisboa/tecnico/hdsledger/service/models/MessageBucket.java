@@ -116,7 +116,26 @@ public class MessageBucket {
             String preparedValue = roundChangeMessage.getPreparedValue();
             int preparedRound = roundChangeMessage.getPreparedRound();
 
+            if(preparedValue == null){
+                preparedValue = "null";
+            }
+
             String[] key = { preparedValue, Integer.toString(preparedRound) };
+            boolean contains = false;
+            int count = 0;
+            for(String[] frequencyKey : frequency.keySet()){
+                if(frequencyKey[0].equals(key[0]) && frequencyKey[1].equals(key[1])){
+                    contains = true;
+                    count++;
+                    break;
+                }
+            }
+
+            if(!contains){
+                frequency.put(key, 1);
+            } else {
+                frequency.put(key, count + 1);
+            }
             frequency.put(key, frequency.getOrDefault(key, 0) + 1);
         });
 

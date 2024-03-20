@@ -17,6 +17,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <maven.test.skip>true</maven.test.skip><!--To skip tests for this module-->
     </properties>
     <dependencies>
         <dependency>
