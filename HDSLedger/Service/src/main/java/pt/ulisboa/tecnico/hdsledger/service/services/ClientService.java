@@ -24,16 +24,16 @@ public class ClientService implements UDPService{
     private final ProcessConfig thisNodeConfig;
 
     // All nodes' configuration
-    private final ProcessConfig[] allNodesConfig;
+    private final ProcessConfig[] clientsConfig;
 
     // Node service to be able to invoke consensus algorithm
     private final NodeService nodeService;
 
-    public ClientService(Link linkToClients, ProcessConfig thisNodeConfig, ProcessConfig[] allNodesConfig, NodeService nodeService) {
+    public ClientService(Link linkToClients, ProcessConfig thisNodeConfig, ProcessConfig[] clientsConfig, NodeService nodeService) {
 
         this.linkToClients = linkToClients;
         this.thisNodeConfig = thisNodeConfig;
-        this.allNodesConfig = allNodesConfig;
+        this.clientsConfig = clientsConfig;
         this.nodeService = nodeService;
 
     }
@@ -64,6 +64,16 @@ public class ClientService implements UDPService{
 
                                     // Invoke consensus algorithm
                                     nodeService.startConsensus(appendMessage.getValue());
+                                }
+
+                                case CHECK_BALANCE -> {
+                                    LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received CHECK_BALANCE message from {1}",
+                                            thisNodeConfig.getId(), message.getSenderId()));
+
+                                    //we now need to deserialize the message and check to get the checkBalanceMessage
+
+                                    ConsensusMessage consensusMessage = (ConsensusMessage) message;
+                                    nodeService.uponCheckBalance(consensusMessage);
                                 }
 
 
@@ -107,5 +117,6 @@ public class ClientService implements UDPService{
 
         linkToClients.broadcast(consensusMessage);
     }
+
     
 }

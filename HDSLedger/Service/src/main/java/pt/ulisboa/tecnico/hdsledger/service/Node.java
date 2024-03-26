@@ -19,6 +19,8 @@ public class Node {
     // Hardcoded path to files
     private static String nodesConfigPath = "../Common/src/main/resources/";
 
+    private static String serviceConfigPath = "src/main/resources/";
+
     public static void main(String[] args) {
 
         try {

@@ -20,6 +20,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.RoundTimer;
@@ -64,6 +65,9 @@ public class NodeService implements UDPService {
 
     // Client Service
     private ClientService clientService;
+
+    // Client's accounts map <clientId, Account>
+    private Map<String, AccountInfo> accountsInfo = new ConcurrentHashMap<>();
 
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
@@ -418,6 +422,10 @@ public class NodeService implements UDPService {
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
         }
+    }
+
+    public synchronized void uponCheckBalance(ConsensusMessage message) {
+        System.out.println("Checking balance");
     }
 
     public synchronized void uponRoundChange(ConsensusMessage message) {

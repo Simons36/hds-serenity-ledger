@@ -39,6 +39,10 @@ public class CommandLineInterface {
                         clientState.SendAppendMessage(arguments[1]);
                         break;
 
+                    case CHECK_BALANCE:
+                        clientState.SendCheckBalanceMessage();
+                        break;
+
                     case EXIT:
                         condition = false;
                         break;
