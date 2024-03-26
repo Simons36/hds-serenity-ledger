@@ -41,4 +41,14 @@ public class CryptoLibrary {
     
     }
 
+    public boolean verifyPublicKey(String pathToPublicKey, PublicKey providedPublicKey){
+            
+        try {
+            PublicKey publicKey = CryptoIO.readPublicKey(pathToPublicKey);
+            return publicKey.equals(providedPublicKey);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

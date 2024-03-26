@@ -43,6 +43,14 @@ public class ConsensusMessage extends Message {
         return new Gson().fromJson(this.message, LedgerUpdateMessage.class);
     }
 
+    public CheckBalanceMessage deserializeCheckBalanceMessage() {
+        return new Gson().fromJson(this.message, CheckBalanceMessage.class);
+    }
+
+    public CheckBalanceResponseMessage deserializeCheckBalanceResponseMessage() {
+        return new Gson().fromJson(this.message, CheckBalanceResponseMessage.class);
+    }
+
     public String getMessage() {
         return message;
     }

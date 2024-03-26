@@ -2,19 +2,19 @@ package pt.ulisboa.tecnico.hdsledger.utilities;
 
 public class ServiceConfig {
     
-    private int initialAccountBalance;
+    private int initial_account_balance;
 
-    private double transactionFee;
+    private double transaction_fee;
 
     public ServiceConfig() {}
 
     // getters
 
     public int getInitialAccountBalance() {
-        return initialAccountBalance;
+        return this.initial_account_balance;
     }
 
     public double getTransactionFee() {
-        return transactionFee;
+        return this.transaction_fee;
     }
 }

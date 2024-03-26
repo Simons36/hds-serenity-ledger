@@ -25,4 +25,15 @@ public class CryptoUtil {
         return sig.verify(signature);
     
     }
+
+    public static boolean verifyPublicKey(String pathToPublicKey, PublicKey providedPublicKey){
+            
+        try {
+            PublicKey publicKey = CryptoIO.readPublicKey(pathToPublicKey);
+            return publicKey.equals(providedPublicKey);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

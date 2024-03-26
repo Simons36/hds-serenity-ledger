@@ -8,7 +8,10 @@ public enum ErrorMessage {
     CannotOpenSocket("Error while opening socket"),
     ErrorImportingPrivateKey("The private key is not available at the path supplied"),
     InvalidSignature("The signature is invalid"),
-    DebugMessage("Debug message");
+    DebugMessage("Debug message"),
+    InvalidPublicKey("The provided public key for this client is invalid"),
+    AccountNotFound("The account was not found"),
+    DuplicateClientInConfig("The configuration file has a duplicate client");
 
     private final String message;
 

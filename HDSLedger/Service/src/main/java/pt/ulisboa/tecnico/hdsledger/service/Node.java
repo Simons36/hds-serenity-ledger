@@ -7,6 +7,8 @@ import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+import pt.ulisboa.tecnico.hdsledger.utilities.ServiceConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.ServiceConfigBuilder;
 import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 
 import java.text.MessageFormat;
@@ -57,6 +59,9 @@ public class Node {
             .filter(c -> c.getId().equals(id))
             .findAny().orElse(null);
 
+            // Now import service config (these are parameters specific to the service, like account starting balance)
+            ServiceConfig serviceConfig = new ServiceConfigBuilder().fromFile(serviceConfigPath + nodeConfig.getServiceConfig());
+
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}\n",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
@@ -68,7 +73,7 @@ public class Node {
 
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
-                    nodeConfigs);
+                    nodeConfigs, clientConfigs, serviceConfig);
 
             nodeService.listen();
 
