@@ -5,7 +5,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Optional;
+import java.util.stream.Collectors;
 import java.text.MessageFormat;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -23,6 +24,7 @@ import pt.ulisboa.tecnico.hdsledger.client.enums.RequestSendingPolicy;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.CommandsFilePathNotValidException;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.ErrorCommunicatingWithNode;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.IncorrectSendingPolicyException;
+import pt.ulisboa.tecnico.hdsledger.client.models.ClientMessageBucket;
 import pt.ulisboa.tecnico.hdsledger.client.models.Command;
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
@@ -33,8 +35,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilde
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
-
-
+import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
 
 public class ClientState {
 
@@ -46,15 +47,18 @@ public class ClientState {
     private final ClientService clientService;
     // Sending policy to be used
     private final RequestSendingPolicy sendingPolicy;
-    // Counter to keep track of sent messages for message IDs
-    private int messageCounter = 0;
     // Current ledger
     private ArrayList<String> ledger = new ArrayList<>();
     // Map with received ledger update messages
     private Map<Integer, List<ConsensusMessage>> receivedLedgerUpdates = new HashMap<>();
+    // Bucket to store check balance responses
+    private final ClientMessageBucket checkBalanceResponseMessageBucket;
+    // Number of check balance messages sent
+    private int sentCheckBalance = 0;
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
-            String commandsFilePath) throws IncorrectSendingPolicyException, CommandsFilePathNotValidException, Exception {
+            String commandsFilePath)
+            throws IncorrectSendingPolicyException, CommandsFilePathNotValidException, Exception {
 
         this.clientId = clientId;
 
@@ -75,17 +79,16 @@ public class ClientState {
 
         ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(configPath);
         String publicKeyPath = "../" + Arrays.stream(allConfigs)
-                        .filter(config -> config.getId().equals(clientId))
-                        .findAny()
-                        .orElseThrow(() -> new RuntimeException("Client not found in config file"))
-                        .getPublicKeyPath();
+                .filter(config -> config.getId().equals(clientId))
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("Client not found in config file"))
+                .getPublicKeyPath();
 
         try {
             this.publicKey = CryptoIO.readPublicKey(publicKeyPath);
         } catch (Exception e) {
             throw e;
         }
-
 
         this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this);
 
@@ -101,9 +104,16 @@ public class ClientState {
 
         }
 
+        int nodeCount = (int) Arrays.stream(allConfigs)
+                .filter(config -> TypeOfProcess.node.equals(config.getType()))
+                .count();
+
+        
+        this.checkBalanceResponseMessageBucket = new ClientMessageBucket(nodeCount);
+
     }
 
-    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) throws Exception{
+    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) throws Exception {
         this(configPath, ipAddress, port, sendingPolicy, clientId, null);
     }
 
@@ -138,10 +148,10 @@ public class ClientState {
     }
 
     public void SendCheckBalanceMessage() {
-        
+
         try {
             ConsensusMessage checkBalanceMessage = new ConsensusMessageBuilder(clientId, Message.Type.CHECK_BALANCE)
-                    .setMessage(new CheckBalanceMessage(publicKey).toJson())
+                    .setMessage(new CheckBalanceMessage(publicKey, ++this.sentCheckBalance).toJson())
                     .build();
 
             clientService.broadcast(checkBalanceMessage);
@@ -200,6 +210,22 @@ public class ClientState {
                                 clientId, String.join("", ledger)));
             }
 
+        }
+
+    }
+
+    protected void uponCheckBalanceResponse(ConsensusMessage consensusMessage) {
+        
+
+        this.checkBalanceResponseMessageBucket.addMessage(consensusMessage);
+
+        int replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
+        System.out.println(replyToCheckBalanceRequestId);
+
+        Optional<Integer> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
+
+        if(balance.isPresent()){
+            System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));
         }
 
     }
@@ -264,7 +290,7 @@ public class ClientState {
 
     }
 
-    private void WriteLedgerToFile(String ledgerFilePath) throws IOException{
+    private void WriteLedgerToFile(String ledgerFilePath) throws IOException {
 
         String ledgerString = String.join("", ledger);
         BufferedWriter writer = new BufferedWriter(new FileWriter(ledgerFilePath));

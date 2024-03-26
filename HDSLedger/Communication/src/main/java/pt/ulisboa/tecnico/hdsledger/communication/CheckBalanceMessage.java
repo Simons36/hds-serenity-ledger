@@ -11,10 +11,13 @@ import com.google.gson.Gson;
 
 public class CheckBalanceMessage {
 
-    private String publicKeyBase64;
+    private final String publicKeyBase64;
 
-    public CheckBalanceMessage(PublicKey publicKey) {
+    private final int checkBalanceRequestId;
+
+    public CheckBalanceMessage(PublicKey publicKey, int checkBalanceRequestId) {
         this.publicKeyBase64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+        this.checkBalanceRequestId = checkBalanceRequestId;
     }
 
     public PublicKey getPublicKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
@@ -22,6 +25,10 @@ public class CheckBalanceMessage {
         X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
         KeyFactory keyFactory = KeyFactory.getInstance("RSA"); // Adjust algorithm as per your key type
         return keyFactory.generatePublic(keySpec);
+    }
+
+    public int getCheckRequestBalanceId(){
+        return this.checkBalanceRequestId;
     }
 
     public String toJson() {

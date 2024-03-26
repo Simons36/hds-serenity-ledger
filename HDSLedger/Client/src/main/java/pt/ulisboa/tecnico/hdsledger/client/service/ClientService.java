@@ -35,6 +35,7 @@ public class ClientService implements UDPService {
     // Number of nodes that contitute a quorum
     private final int quorumSize;
     
+    
 
     public ClientService(ProcessConfig[] allConfigs, String clientId, String ipAddress, final int port, ClientState clientState) {
 
@@ -100,6 +101,13 @@ public class ClientService implements UDPService {
                                     this.selfConfig.getId(), message.getSenderId()));
 
                                     this.clientState.ledgerUpdate((ConsensusMessage) message);
+                                    break;
+
+                                case CHECK_BALANCE_RESPONSE:
+                                    System.out.println(MessageFormat.format("{0} - Received CHECK_BALANCE_RESPONSE message from {1}",
+                                    this.selfConfig.getId(), message.getSenderId()));
+
+                                    this.clientState.uponCheckBalanceResponse((ConsensusMessage) message);
                                     break;
                                     
 

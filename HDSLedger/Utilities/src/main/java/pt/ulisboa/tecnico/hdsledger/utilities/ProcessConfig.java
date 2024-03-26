@@ -21,6 +21,8 @@ public class ProcessConfig {
 
     private String publicKeyPath;
 
+    private String serviceConfig;
+
     // Used for leader election
     private int nodePosition;
 
@@ -63,6 +65,10 @@ public class ProcessConfig {
 
     public int getNodePosition() {
         return nodePosition;
+    }
+
+    public String getServiceConfig() {
+        return serviceConfig;
     }
 
     public void setNodePosition(int nodePosition) {

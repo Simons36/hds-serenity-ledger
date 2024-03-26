@@ -12,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
@@ -20,12 +22,17 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.RoundTimer;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
+import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.ServiceConfig;
 
 public class NodeService implements UDPService {
 
@@ -69,8 +76,11 @@ public class NodeService implements UDPService {
     // Client's accounts map <clientId, Account>
     private Map<String, AccountInfo> accountsInfo = new ConcurrentHashMap<>();
 
+    // Service Configurations
+    private final ServiceConfig serviceConfig;
+
     public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs, ServiceConfig serviceConfig) {
 
         this.link = link;
         this.config = config;
@@ -80,7 +90,9 @@ public class NodeService implements UDPService {
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
-
+        this.serviceConfig = serviceConfig;
+        
+        InitializeAccounts(clientsConfigs);
     }
 
     public ProcessConfig getConfig() {
@@ -128,6 +140,19 @@ public class NodeService implements UDPService {
 
         this.link.broadcast(consensusMessage);
     }
+
+
+    private void InitializeAccounts(ProcessConfig[] clientsConfigs) {
+        Arrays.stream(clientsConfigs)
+                .forEach(clientConfig -> {
+                    try {
+                        CreateAccount(clientConfig.getId(), this.serviceConfig.getInitialAccountBalance(), "../" + clientConfig.getPublicKeyPath());
+                    } catch (HDSSException e) {
+                        throw e;
+                    }
+                });
+    }
+    
 
     public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
@@ -424,8 +449,44 @@ public class NodeService implements UDPService {
         }
     }
 
-    public synchronized void uponCheckBalance(ConsensusMessage message) {
-        System.out.println("Checking balance");
+    //TODO: Remove senderPublicKeyPath
+    public synchronized int uponCheckBalance(ConsensusMessage message) throws HDSSException{
+
+        String clientId = message.getSenderId();
+
+        CheckBalanceMessage checkBalanceMessage = message.deserializeCheckBalanceMessage();
+
+        // get public key path of the sender
+        if(!this.accountsInfo.containsKey(clientId)){
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not find account for sender {1}",
+                    this.config.getId(), clientId));
+            throw new HDSSException(ErrorMessage.AccountNotFound);
+        }
+
+        String senderPublicKeyPath = this.accountsInfo.get(clientId).getPublicKeyFilename();
+        
+        try {
+            if(!CryptoUtil.verifyPublicKey(senderPublicKeyPath, checkBalanceMessage.getPublicKey())){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not verify public key for sender {1}",
+                        this.config.getId(), clientId));
+                throw new HDSSException(ErrorMessage.InvalidPublicKey);
+            }
+            
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not verify public key for sender {1}",
+            this.config.getId(), clientId));
+            throw new HDSSException(ErrorMessage.InvalidPublicKey);
+        }
+        
+        //get balance
+        synchronized (accountsInfo) {
+            AccountInfo account = accountsInfo.get(clientId);
+            
+            return account.getBalance();
+
+        }
+        
+        
     }
 
     public synchronized void uponRoundChange(ConsensusMessage message) {
@@ -630,6 +691,17 @@ public class NodeService implements UDPService {
 
         return false;
 
+    }
+
+
+    private void CreateAccount(String clientId, int initialBalance, String clientPublicKeyPath){
+
+        // If account already exists throw error
+        if(this.accountsInfo.containsKey(clientId)){
+            throw new HDSSException(ErrorMessage.DuplicateClientInConfig);
+        }
+
+        this.accountsInfo.put(clientId, new AccountInfo(clientId, initialBalance, clientPublicKeyPath));
     }
 
     @Override

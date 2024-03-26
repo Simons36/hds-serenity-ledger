@@ -1,14 +1,11 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-
-import javax.swing.text.html.Option;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
@@ -224,6 +221,7 @@ public class MessageBucket {
 
         return Optional.of(minRound);
     }
+
 
     /**
      * Helper function that returns a tuple (pr, pv) where pr and pv are, respectively, the prepared round
