@@ -10,7 +10,7 @@ import java.security.spec.X509EncodedKeySpec;
 
 public class CryptoIO{
 
-    protected static PrivateKey readPrivateKey(String filename) throws Exception{
+    public static PrivateKey readPrivateKey(String filename) throws Exception{
 
         byte[] keyBytes = Files.readAllBytes(Paths.get(filename));
 
@@ -22,7 +22,7 @@ public class CryptoIO{
     }
 
 
-    protected static PublicKey readPublicKey(String filename) throws Exception {
+    public static PublicKey readPublicKey(String filename) throws Exception {
     
         byte[] keyBytes = Files.readAllBytes(Paths.get(filename));
 

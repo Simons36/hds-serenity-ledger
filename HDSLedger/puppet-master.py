@@ -14,8 +14,13 @@ server_configs = [
     "regular_config.json",
 ]
 
+service_configs = [
+    "service_config.json",
+]
+
 
 server_config = server_configs[0]
+service_config = service_configs[0]
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
@@ -34,7 +39,7 @@ with open(f"Common/src/main/resources/{server_config}") as f:
             pid = os.fork()
             if pid == 0:
                 os.system(
-                    f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config}' ; sleep 500\"")
+                    f"{terminal} sh -c \"cd Service; mvn exec:java -Dexec.args='{key['id']} {server_config} {service_config}' ; sleep 500\"")
                 sys.exit()
 
 signal.signal(signal.SIGINT, quit_handler)

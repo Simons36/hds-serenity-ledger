@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.client.service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,9 +10,11 @@ import java.text.MessageFormat;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputFilter.Config;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.PublicKey;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -22,15 +25,23 @@ import pt.ulisboa.tecnico.hdsledger.client.exceptions.ErrorCommunicatingWithNode
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.IncorrectSendingPolicyException;
 import pt.ulisboa.tecnico.hdsledger.client.models.Command;
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerUpdateMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
+import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
+
+
 
 public class ClientState {
 
     // Id of this client
     private final String clientId;
+    // Self config
+    private final PublicKey publicKey;
     // Service that will be used for node communication
     private final ClientService clientService;
     // Sending policy to be used
@@ -43,7 +54,7 @@ public class ClientState {
     private Map<Integer, List<ConsensusMessage>> receivedLedgerUpdates = new HashMap<>();
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
-            String commandsFilePath) throws IncorrectSendingPolicyException, CommandsFilePathNotValidException {
+            String commandsFilePath) throws IncorrectSendingPolicyException, CommandsFilePathNotValidException, Exception {
 
         this.clientId = clientId;
 
@@ -62,7 +73,21 @@ public class ClientState {
 
         }
 
-        this.clientService = new ClientService(configPath, clientId, ipAddress, port, this);
+        ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(configPath);
+        String publicKeyPath = "../" + Arrays.stream(allConfigs)
+                        .filter(config -> config.getId().equals(clientId))
+                        .findAny()
+                        .orElseThrow(() -> new RuntimeException("Client not found in config file"))
+                        .getPublicKeyPath();
+
+        try {
+            this.publicKey = CryptoIO.readPublicKey(publicKeyPath);
+        } catch (Exception e) {
+            throw e;
+        }
+
+
+        this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this);
 
         startListening();
 
@@ -78,7 +103,7 @@ public class ClientState {
 
     }
 
-    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) {
+    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) throws Exception{
         this(configPath, ipAddress, port, sendingPolicy, clientId, null);
     }
 
@@ -109,6 +134,19 @@ public class ClientState {
 
             default:
                 throw new RuntimeException("Sending policy not implemented yet.");
+        }
+    }
+
+    public void SendCheckBalanceMessage() {
+        
+        try {
+            ConsensusMessage checkBalanceMessage = new ConsensusMessageBuilder(clientId, Message.Type.CHECK_BALANCE)
+                    .setMessage(new CheckBalanceMessage(publicKey).toJson())
+                    .build();
+
+            clientService.broadcast(checkBalanceMessage);
+        } catch (ErrorCommunicatingWithNode e) {
+            System.out.println(e.getMessage());
         }
     }
 

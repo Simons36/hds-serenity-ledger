@@ -32,13 +32,20 @@ public class Client {
         final int port = Integer.parseInt(args[3]);
         final String sendingPolicy = args[4];
         ClientState clientState = null;
-        
-        if(args.length == 6){
-            clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId, commandsPath + args[5]);
-        }else{
-            clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId);
-            CommandLineInterface.ParseInput(clientState);
+
+        try {
+
+            if(args.length == 6){
+                clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId, commandsPath + args[5]);
+            }else{
+                clientState = new ClientState(configPath, ipAddress, port, sendingPolicy, thisClientId);
+                CommandLineInterface.ParseInput(clientState);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+        
 
 
 

@@ -36,9 +36,7 @@ public class ClientService implements UDPService {
     private final int quorumSize;
     
 
-    public ClientService(String processConfigPath, String clientId, String ipAddress, final int port, ClientState clientState) {
-
-        ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(processConfigPath);
+    public ClientService(ProcessConfig[] allConfigs, String clientId, String ipAddress, final int port, ClientState clientState) {
 
         // Filter node configs and put them in nodes
         this.nodes = Arrays.stream(allConfigs)
