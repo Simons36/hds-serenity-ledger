@@ -34,10 +34,11 @@ public class ClientService implements UDPService {
     private final Link linkToNodes;
     // Number of nodes that contitute a quorum
     private final int quorumSize;
-    
+    // Verbose mode (if true then print additional information)
+    private final boolean verboseMode;
     
 
-    public ClientService(ProcessConfig[] allConfigs, String clientId, String ipAddress, final int port, ClientState clientState) {
+    public ClientService(ProcessConfig[] allConfigs, String clientId, String ipAddress, final int port, ClientState clientState, boolean verboseMode){
 
         // Filter node configs and put them in nodes
         this.nodes = Arrays.stream(allConfigs)
@@ -57,9 +58,9 @@ public class ClientService implements UDPService {
         this.port = port;
         this.clientState = clientState;
 
-        //get self config from 
+        this.verboseMode = verboseMode;
 
-        this.linkToNodes = new Link(this.selfConfig, port, nodes, ConsensusMessage.class, false);
+        this.linkToNodes = new Link(this.selfConfig, port, nodes, ConsensusMessage.class, false, verboseMode);
         
     }
 
@@ -81,7 +82,9 @@ public class ClientService implements UDPService {
                         .orElse(null);
 
                         if(sendingNode == null){
-                            System.out.println(MessageFormat.format("Received message from unknown node {0}", message.getSenderId()));
+                            if(verboseMode){
+                                System.out.println(MessageFormat.format("Received message from unknown node {0}", message.getSenderId()));
+                            }
                             continue;
                         }
 
@@ -92,11 +95,13 @@ public class ClientService implements UDPService {
 
 
                                 case ACK:
+                                    if(verboseMode)
                                     System.out.println(MessageFormat.format("{0} - Received ACK message from {1}",
                                             this.selfConfig.getId(), message.getSenderId()));
                                     break;
 
                                 case LEDGER_UPDATE:
+                                    if(verboseMode)
                                     System.out.println(MessageFormat.format("{0} - Received LEDGER_UPDATE message from {1}",
                                     this.selfConfig.getId(), message.getSenderId()));
 
@@ -104,6 +109,7 @@ public class ClientService implements UDPService {
                                     break;
 
                                 case CHECK_BALANCE_RESPONSE:
+                                    if(verboseMode)
                                     System.out.println(MessageFormat.format("{0} - Received CHECK_BALANCE_RESPONSE message from {1}",
                                     this.selfConfig.getId(), message.getSenderId()));
 
@@ -112,12 +118,14 @@ public class ClientService implements UDPService {
                                     
 
                                 case IGNORE:
+                                    if(verboseMode)
                                     System.out.println(MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
 
                                     break;
 
                                 default:
+                                    if(verboseMode)
                                     System.out.println(MessageFormat.format("{0} - Received unknown message from {1}",
                                                     this.selfConfig.getId(), message.getSenderId()));
 
@@ -159,7 +167,10 @@ public class ClientService implements UDPService {
     @Override
     public void broadcast(ConsensusMessage consensusMessage) {
 
-        System.out.println("Broadcasting message.");
+        if(verboseMode){
+            System.out.println("Broadcasting message.");
+        }
+
 
         linkToNodes.broadcast(consensusMessage);
     }

@@ -16,8 +16,6 @@ public class Util {
 
     private static final String definedSendingPolicyForClients = "all";
 
-
-
     public static Process SpawnNewNode(String nodeId, String configFile) {
 
         ProcessBuilder builder = new ProcessBuilder(terminal, "--", "sh", "-c",
@@ -37,7 +35,8 @@ public class Util {
     public static Process SpawnNewClient(String clientId, String configFile, String IP, String port, String policy) {
 
         ProcessBuilder builder = new ProcessBuilder(terminal, "--", "sh", "-c",
-                "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port + " " + policy + "\"");
+                "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port
+                        + " " + policy + " " + "true" +  "\"");
 
         try {
             Process process = builder.inheritIO().start();
@@ -50,10 +49,12 @@ public class Util {
 
     }
 
-    public static Process SpawnNewClient(String clientId, String configFile, String IP, String port, String policy, String commandsFilename) {
+    public static Process SpawnNewClient(String clientId, String configFile, String IP, String port, String policy,
+            String commandsFilename) {
 
         ProcessBuilder builder = new ProcessBuilder(terminal, "--", "sh", "-c",
-                "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port + " " + policy + " " + commandsFilename + "\"");
+                "cd ..; cd Client; mvn exec:java -Dexec.args=\"" + clientId + " " + configFile + " " + IP + " " + port
+                        + " " + policy + " " + "true" + " " + commandsFilename + "\"");
 
         try {
             return builder.inheritIO().start();
@@ -65,61 +66,63 @@ public class Util {
 
     }
 
-    public static Process[] LaunchAllNodes(String pathToConfig){
+    public static Process[] LaunchAllNodes(String pathToConfig) {
         ProcessConfig[] nodeConfigs = Arrays.stream(new ProcessConfigBuilder().fromFile(pathToConfig))
-                                     .filter(config -> config.getType().equals(TypeOfProcess.node))
-                                     .toArray(ProcessConfig[]::new);
+                .filter(config -> config.getType().equals(TypeOfProcess.node))
+                .toArray(ProcessConfig[]::new);
 
         Process[] processList = new Process[nodeConfigs.length];
 
-        //get the name of the config file
+        // get the name of the config file
         int k = pathToConfig.split("/").length - 1;
         String nameOfConfig = pathToConfig.split("/")[k];
 
-        for(int i = 0; i < nodeConfigs.length; i++){
+        for (int i = 0; i < nodeConfigs.length; i++) {
             processList[i] = SpawnNewNode(nodeConfigs[i].getId(), nameOfConfig);
         }
-        
+
         return processList;
-        
+
     }
 
-    public static Process[] LaunchAllClients(String pathToConfig, Map<String, String> clientIdToCommandsFilenameMap){
+    public static Process[] LaunchAllClients(String pathToConfig, Map<String, String> clientIdToCommandsFilenameMap) {
         ProcessConfig[] clientConfigs = Arrays.stream(new ProcessConfigBuilder().fromFile(pathToConfig))
-                                     .filter(config -> config.getType().equals(TypeOfProcess.client))
-                                     .toArray(ProcessConfig[]::new);
+                .filter(config -> config.getType().equals(TypeOfProcess.client))
+                .toArray(ProcessConfig[]::new);
 
         Process[] processList = new Process[clientConfigs.length];
 
-        //get the name of the config file
+        // get the name of the config file
         int k = pathToConfig.split("/").length - 1;
         String nameOfConfig = pathToConfig.split("/")[k];
 
-        for(int i = 0; i < clientConfigs.length; i++){
+        for (int i = 0; i < clientConfigs.length; i++) {
             String clientId = clientConfigs[i].getId();
             String commandsFilename = clientIdToCommandsFilenameMap.get(clientId);
 
             String IP = clientConfigs[i].getHostname();
 
             String port = Integer.toString(clientConfigs[i].getPort());
-            
-            if(commandsFilename != null)
-                processList[i] = SpawnNewClient(clientId, nameOfConfig, IP, port, definedSendingPolicyForClients, commandsFilename);
+
+            if (commandsFilename != null)
+                processList[i] = SpawnNewClient(clientId, nameOfConfig, IP, port, definedSendingPolicyForClients,
+                        commandsFilename);
             else
-                processList[i] = SpawnNewClient(clientConfigs[i].getId(), nameOfConfig, IP, port, definedSendingPolicyForClients);
+                processList[i] = SpawnNewClient(clientConfigs[i].getId(), nameOfConfig, IP, port,
+                        definedSendingPolicyForClients);
         }
-        
+
         return processList;
-        
+
     }
 
-    public static void KillAllProcesses(List<Process> processes){
-        for(Process p : processes){
+    public static void KillAllProcesses(List<Process> processes) {
+        for (Process p : processes) {
             p.destroy();
         }
     }
 
-    public static void Delay(int seconds){
+    public static void Delay(int seconds) {
         try {
             Thread.sleep(seconds * 1000);
         } catch (Exception e) {

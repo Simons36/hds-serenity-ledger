@@ -45,13 +45,16 @@ public class Link {
     private final CryptoLibrary cryptoLibrary;
     // States whether this link is used for client to node communication or for node to node communication 
     private final boolean isForNodeToNodeCommunication;
+    // Verbose mode
+    private final boolean verboseMode;
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded) {
-        this(self, port, nodes, messageClass, messageAuthenticationNeeded, false, 200);
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean messageAuthenticationNeeded,
+                                                                                                                                    boolean verboseMode) {
+        this(self, port, nodes, messageClass, messageAuthenticationNeeded, false, 200, verboseMode);
     }
 
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass, boolean isForNodeToNodeCommunication,
-            boolean activateLogs, int baseSleepTime) {
+            boolean activateLogs, int baseSleepTime, boolean verboseMode) {
         
 
         this.config = self;
@@ -88,6 +91,13 @@ public class Link {
         } catch (Exception e) {
             e.printStackTrace();
             throw new HDSSException(ErrorMessage.ErrorImportingPrivateKey);
+        }
+
+        this.verboseMode = verboseMode;
+        if(verboseMode){
+            LOGGER.log(Level.INFO, "VERBOSE MODE ACTIVATED");
+        }else{
+            LOGGER.log(Level.INFO, "VERBOSE MODE DEACTIVATED");
         }
 
     }
@@ -146,6 +156,7 @@ public class Link {
                 if (nodeId.equals(this.config.getId())) {
                     this.localhostQueue.add(data);
 
+                    if(verboseMode)
                     LOGGER.log(Level.INFO,
                             MessageFormat.format("{0} - Message {1} (locally) sent to {2}:{3} successfully",
                                     config.getId(), data.getType(), destAddress, destPort));
@@ -154,6 +165,7 @@ public class Link {
                 }
 
                 for (;;) {
+                    if(verboseMode)
                     LOGGER.log(Level.INFO, MessageFormat.format(
                             "{0} - Sending {1} message to {2}:{3} with message ID {4} - Attempt #{5}", config.getId(),
                             data.getType(), destAddress, destPort, messageId, count++));
@@ -172,6 +184,7 @@ public class Link {
                     sleepTime <<= 1;
                 }
 
+                if(verboseMode)
                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Message {1} sent to {2}:{3} successfully",
                         config.getId(), data.getType(), destAddress, destPort));
             } catch (Exception e) {

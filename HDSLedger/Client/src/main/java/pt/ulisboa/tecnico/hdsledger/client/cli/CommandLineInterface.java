@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.client.cli;
 
 import java.util.Scanner;
 
+import javax.management.monitor.Monitor;
+
 import pt.ulisboa.tecnico.hdsledger.client.enums.CommandType;
 import pt.ulisboa.tecnico.hdsledger.client.service.ClientState;
 
@@ -40,7 +42,16 @@ public class CommandLineInterface {
                         break;
 
                     case CHECK_BALANCE:
-                        clientState.SendCheckBalanceMessage();
+                        Object lock = new Object();
+                        clientState.SendCheckBalanceMessage(lock);
+                        synchronized (lock) {
+                            try {
+                                lock.wait();
+                            } catch (Exception e) {
+                                System.out.println("Error with lock");
+                                break;
+                            }
+                        }
                         break;
 
                     case EXIT:
