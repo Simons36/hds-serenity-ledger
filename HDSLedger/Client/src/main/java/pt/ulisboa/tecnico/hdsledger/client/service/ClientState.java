@@ -57,6 +57,8 @@ public class ClientState {
     private int sentCheckBalance = 0;
     // List with check balance request IDs that have already finished
     private List<Integer> finishedCheckBalanceRequests = new ArrayList<>();
+    // Lock for commandLineInterface (used for displaying information in the command line in the correct order)
+    private Object lock;
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -149,14 +151,18 @@ public class ClientState {
         }
     }
 
-    public void SendCheckBalanceMessage() {
+    public void SendCheckBalanceMessage(Object lock) {
 
         try {
+            this.lock = lock;
+
             ConsensusMessage checkBalanceMessage = new ConsensusMessageBuilder(clientId, Message.Type.CHECK_BALANCE)
                     .setMessage(new CheckBalanceMessage(publicKey, ++this.sentCheckBalance).toJson())
                     .build();
 
             clientService.broadcast(checkBalanceMessage);
+
+
         } catch (ErrorCommunicatingWithNode e) {
             System.out.println(e.getMessage());
         }
@@ -228,6 +234,10 @@ public class ClientState {
         if(balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)){
             System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));
             finishedCheckBalanceRequests.add(replyToCheckBalanceRequestId);
+            synchronized(lock){
+                lock.notify();
+            }
+            lock = null;
         }
 
     }
