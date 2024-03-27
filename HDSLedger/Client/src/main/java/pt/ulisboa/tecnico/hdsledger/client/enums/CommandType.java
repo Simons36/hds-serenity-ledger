@@ -7,6 +7,7 @@ public enum CommandType {
 
     HELP("help", "Prints this message", ""),
     CHECK_BALANCE("check_balance", "Check the balance of this client.", "Usage: checkBalance <clientID>"),
+    TRANSFER("transfer", "Transfer a certain amount of coins to another client.", "Usage: transfer"),
     APPEND("append", "Append a simple string to the blockchain.",  "Usage: append <message>"),
     EXIT("exit", "Exit the application.",  "Usage: exit");
 

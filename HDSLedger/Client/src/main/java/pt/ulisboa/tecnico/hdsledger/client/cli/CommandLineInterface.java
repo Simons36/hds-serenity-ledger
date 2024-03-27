@@ -5,6 +5,7 @@ import java.util.Scanner;
 import javax.management.monitor.Monitor;
 
 import pt.ulisboa.tecnico.hdsledger.client.enums.CommandType;
+import pt.ulisboa.tecnico.hdsledger.client.exceptions.ClientIdDoesntExistException;
 import pt.ulisboa.tecnico.hdsledger.client.service.ClientState;
 
 import static pt.ulisboa.tecnico.hdsledger.client.enums.CommandType.HELP;
@@ -49,6 +50,30 @@ public class CommandLineInterface {
                                 lock.wait();
                             } catch (Exception e) {
                                 System.out.println("Error with lock");
+                                break;
+                            }
+                        }
+                        break;
+
+                    case TRANSFER:
+                        System.out.println();
+                        System.out.println("Please provide the client ID of the receiver:");
+                        String receiver = scanner.nextLine().trim();
+                        for(;;){
+                            System.out.println("Please provide the amount of coins to transfer:");
+                            String amount = scanner.nextLine().trim();
+                            try {
+                                int amountInt = Integer.parseInt(amount);
+                                if(amountInt > 0){
+                                    clientState.SendTransferMessage(receiver, amountInt);
+                                    break;
+                                }else{
+                                    System.out.println("Amount must be a positive integer.");
+                                }
+                            } catch (NumberFormatException e) {
+                                System.out.println("Amount must be a positive integer.");
+                            } catch (ClientIdDoesntExistException e){
+                                System.out.println(e.getMessage());
                                 break;
                             }
                         }
