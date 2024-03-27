@@ -21,6 +21,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import pt.ulisboa.tecnico.hdsledger.client.enums.RequestSendingPolicy;
+import pt.ulisboa.tecnico.hdsledger.client.exceptions.ClientIdDoesntExistException;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.CommandsFilePathNotValidException;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.ErrorCommunicatingWithNode;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.IncorrectSendingPolicyException;
@@ -166,6 +167,10 @@ public class ClientState {
         } catch (ErrorCommunicatingWithNode e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    public void SendTransferMessage(String receiverId, int amount) throws ClientIdDoesntExistException{
+        System.out.println("Transfering " + amount + " coins to " + receiverId);
     }
 
     protected void ledgerUpdate(ConsensusMessage consensusMessage) {

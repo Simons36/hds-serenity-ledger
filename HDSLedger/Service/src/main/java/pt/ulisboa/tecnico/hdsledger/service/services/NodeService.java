@@ -240,7 +240,10 @@ public class NodeService implements UDPService {
                 MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
-
+                        
+        // Set instance value
+        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+                        
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId, consensusInstance))
             return;
@@ -249,8 +252,6 @@ public class NodeService implements UDPService {
         if (!JustifyPrePrepare(message))
             return;
 
-        // Set instance value
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r

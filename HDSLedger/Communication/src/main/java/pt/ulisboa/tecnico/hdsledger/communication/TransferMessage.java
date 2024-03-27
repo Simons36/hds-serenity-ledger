@@ -1,39 +1,19 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
-import java.security.PublicKey;
-
 import com.google.gson.Gson;
 
+import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
+
 public class TransferMessage {
-    private String receiverId;
 
-    private String amount;
+    private Transaction transaction;
 
-    private PublicKey publicKeySender;
-
-    private PublicKey publicKeyReceiver;
-
-    public TransferMessage(String receiverId, String amount, PublicKey publicKeyReceiver, PublicKey publicKeySender) {
-        this.receiverId = receiverId;
-        this.amount = amount;
-        this.publicKeyReceiver = publicKeyReceiver;
-        this.publicKeySender = publicKeySender;
+    public TransferMessage(Transaction transaction) {
+        this.transaction = transaction;
     }
 
-    public String getReceiverId() {
-        return receiverId;
-    }
-
-    public String getAmount() {
-        return amount;
-    }
-
-    public PublicKey getPublicKeySender() {
-        return publicKeySender;
-    }
-
-    public PublicKey getPublicKeyReceiver() {
-        return publicKeyReceiver;
+    public Transaction getTransaction() {
+        return transaction;
     }
 
     //to json
