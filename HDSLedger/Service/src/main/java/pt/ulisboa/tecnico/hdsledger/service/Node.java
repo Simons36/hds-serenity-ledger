@@ -69,7 +69,7 @@ public class Node {
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
-                    ConsensusMessage.class, true);
+                    ConsensusMessage.class, true, true);
 
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
@@ -80,7 +80,7 @@ public class Node {
 
             // Link that will be used for client <-> node communication
             Link linkToClients = new Link(nodeConfig, nodeConfig.getClientRequestPort(), clientConfigs,
-                    ConsensusMessage.class, false);
+                    ConsensusMessage.class, false, true);
 
             // Service that will be used for client communication; it needs to take nodeService to be able to make calls
             // to consensus algorithm and respond to clients

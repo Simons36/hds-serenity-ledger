@@ -55,9 +55,11 @@ public class ClientState {
     private final ClientMessageBucket checkBalanceResponseMessageBucket;
     // Number of check balance messages sent
     private int sentCheckBalance = 0;
+    // List with check balance request IDs that have already finished
+    private List<Integer> finishedCheckBalanceRequests = new ArrayList<>();
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
-            String commandsFilePath)
+            String commandsFilePath, boolean verboseMode)
             throws IncorrectSendingPolicyException, CommandsFilePathNotValidException, Exception {
 
         this.clientId = clientId;
@@ -90,7 +92,7 @@ public class ClientState {
             throw e;
         }
 
-        this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this);
+        this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this, verboseMode);
 
         startListening();
 
@@ -113,8 +115,8 @@ public class ClientState {
 
     }
 
-    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId) throws Exception {
-        this(configPath, ipAddress, port, sendingPolicy, clientId, null);
+    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId, boolean verboseMode) throws Exception {
+        this(configPath, ipAddress, port, sendingPolicy, clientId, null, verboseMode);
     }
 
     private void startListening() {
@@ -220,12 +222,12 @@ public class ClientState {
         this.checkBalanceResponseMessageBucket.addMessage(consensusMessage);
 
         int replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
-        System.out.println(replyToCheckBalanceRequestId);
 
         Optional<Integer> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
-        if(balance.isPresent()){
+        if(balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)){
             System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));
+            finishedCheckBalanceRequests.add(replyToCheckBalanceRequestId);
         }
 
     }

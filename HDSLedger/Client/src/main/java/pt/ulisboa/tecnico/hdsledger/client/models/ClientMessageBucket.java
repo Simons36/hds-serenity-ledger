@@ -58,6 +58,7 @@ public class ClientMessageBucket {
         return frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
         }).map((Map.Entry<Integer, Integer> entry) -> {
+            
             return entry.getKey();
         }).findFirst();
     }
