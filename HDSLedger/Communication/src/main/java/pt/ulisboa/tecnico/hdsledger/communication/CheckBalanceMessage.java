@@ -9,6 +9,8 @@ import java.util.Base64;
 
 import com.google.gson.Gson;
 
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
+
 public class CheckBalanceMessage {
 
     private final String publicKeyBase64;
@@ -20,11 +22,12 @@ public class CheckBalanceMessage {
         this.checkBalanceRequestId = checkBalanceRequestId;
     }
 
-    public PublicKey getPublicKey() throws NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] publicKeyBytes = Base64.getDecoder().decode(publicKeyBase64);
-        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(publicKeyBytes);
-        KeyFactory keyFactory = KeyFactory.getInstance("RSA"); // Adjust algorithm as per your key type
-        return keyFactory.generatePublic(keySpec);
+    public PublicKey getPublicKey() throws NoSuchAlgorithmException, InvalidKeySpecException, Exception {
+        try {
+            return CryptoUtil.convertBase64ToPublicKey(publicKeyBase64);
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
     public int getCheckRequestBalanceId(){

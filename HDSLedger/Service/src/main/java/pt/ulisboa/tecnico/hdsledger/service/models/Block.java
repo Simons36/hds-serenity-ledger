@@ -8,19 +8,19 @@ public class Block {
 
     private final int index;
 
-    private final List<Transaction> transactions;
+    private final Transaction transactions[];
 
     private final Block previousBlock;
 
     private Block nextBlock;
 
-    public Block(int index, List<Transaction> transactions) {
+    public Block(int index, Transaction[] transactions) {
         this.index = index;
         this.transactions = transactions;
         this.previousBlock = null;
     }
 
-    public Block(int index, List<Transaction> transactions, Block previousBlock) {
+    public Block(int index, Transaction[] transactions, Block previousBlock) {
         this.index = index;
         this.transactions = transactions;
         this.previousBlock = previousBlock;
@@ -30,7 +30,7 @@ public class Block {
         return index;
     }
 
-    public List<Transaction> getTransactions() {
+    public Transaction[] getTransactions() {
         return transactions;
     }
 
