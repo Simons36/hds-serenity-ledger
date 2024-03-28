@@ -51,6 +51,10 @@ public class ConsensusMessage extends Message {
         return new Gson().fromJson(this.message, CheckBalanceResponseMessage.class);
     }
 
+    public TransferMessage deserializeTransferMessage() {
+        return new Gson().fromJson(this.message, TransferMessage.class);
+    }
+
     public String getMessage() {
         return message;
     }

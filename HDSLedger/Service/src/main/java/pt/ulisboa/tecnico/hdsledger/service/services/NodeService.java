@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
+import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
@@ -240,7 +241,7 @@ public class NodeService implements UDPService {
                 MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
-                        
+
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
                         
@@ -584,6 +585,12 @@ public class NodeService implements UDPService {
         // -------------------
     }
 
+    public void uponTransfer(Transaction transaction, String senderId, String receiverId) {
+
+        
+        System.out.println("FUIHEFIUWHIUFHEU");
+    }
+
     private boolean JustifyPrePrepare(ConsensusMessage consensusMessage) {
 
         // If the message is from the first round, it is justified
@@ -739,6 +746,7 @@ public class NodeService implements UDPService {
 
                                 case ROUND_CHANGE ->
                                     uponRoundChange((ConsensusMessage) message);
+                                    
 
                                 default ->
                                     LOGGER.log(Level.INFO,
