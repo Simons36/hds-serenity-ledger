@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.text.MessageFormat;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
@@ -15,6 +16,7 @@ import java.io.ObjectInputFilter.Config;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 
 import com.google.gson.Gson;
@@ -27,11 +29,13 @@ import pt.ulisboa.tecnico.hdsledger.client.exceptions.ErrorCommunicatingWithNode
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.IncorrectSendingPolicyException;
 import pt.ulisboa.tecnico.hdsledger.client.models.ClientMessageBucket;
 import pt.ulisboa.tecnico.hdsledger.client.models.Command;
+import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerUpdateMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.communication.TransferMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -42,10 +46,14 @@ public class ClientState {
 
     // Id of this client
     private final String clientId;
-    // Self config
+    // Public key of this client
     private final PublicKey publicKey;
+    // Private key of this client
+    private final PrivateKey privateKey;
     // Service that will be used for node communication
     private final ClientService clientService;
+    // Client configs
+    private final ProcessConfig[] clientConfigs;
     // Sending policy to be used
     private final RequestSendingPolicy sendingPolicy;
     // Current ledger
@@ -83,17 +91,24 @@ public class ClientState {
         }
 
         ProcessConfig[] allConfigs = new ProcessConfigBuilder().fromFile(configPath);
-        String publicKeyPath = "../" + Arrays.stream(allConfigs)
+        Stream<String> keyPathsStream = Arrays.stream(allConfigs)
                 .filter(config -> config.getId().equals(clientId))
                 .findAny()
-                .orElseThrow(() -> new RuntimeException("Client not found in config file"))
-                .getPublicKeyPath();
+                .map(config -> Stream.of("../" + config.getPublicKeyPath(), "../" + config.getPrivateKeyPath()))
+                .orElseThrow(() -> new RuntimeException("Client not found in config file"));
+
+        List<String> keyPaths = keyPathsStream.collect(Collectors.toList());
 
         try {
-            this.publicKey = CryptoIO.readPublicKey(publicKeyPath);
+            this.publicKey = CryptoIO.readPublicKey(keyPaths.get(0));
+            this.privateKey = CryptoIO.readPrivateKey(keyPaths.get(1));
         } catch (Exception e) {
             throw e;
         }
+
+        this.clientConfigs = Arrays.stream(allConfigs)
+                .filter(config -> TypeOfProcess.client.equals(config.getType()))
+                .toArray(ProcessConfig[]::new);
 
         this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this, verboseMode);
 
@@ -171,6 +186,38 @@ public class ClientState {
 
     public void SendTransferMessage(String receiverId, int amount) throws ClientIdDoesntExistException{
         System.out.println("Transfering " + amount + " coins to " + receiverId);
+
+        // Find clientId in clientConfig and get publicKey
+        // If not found, throw ClientIdDoesntExistException
+        
+        Transaction transaction = new Transaction(this.privateKey, publicKey, getPublicKeyOfClient(receiverId), amount, receiverId);
+
+        try {
+            ConsensusMessage transferMessage = new ConsensusMessageBuilder(clientId, Message.Type.TRANSFER)
+                    .setMessage(new TransferMessage(transaction).toJson())
+                    .build();
+
+            clientService.broadcast(transferMessage);
+
+        } catch (ErrorCommunicatingWithNode e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    
+    private PublicKey getPublicKeyOfClient(String clientId) throws ClientIdDoesntExistException{
+
+        return  Arrays.stream(clientConfigs)
+                .filter(config -> config.getId().equals(clientId))
+                .findAny()
+                .map(config -> {
+                    try {
+                        return CryptoIO.readPublicKey("../" + config.getPublicKeyPath());
+                    } catch (Exception e) {
+                        return null;
+                    }
+                })
+                .orElseThrow(() -> new ClientIdDoesntExistException(clientId));
+        
     }
 
     protected void ledgerUpdate(ConsensusMessage consensusMessage) {
