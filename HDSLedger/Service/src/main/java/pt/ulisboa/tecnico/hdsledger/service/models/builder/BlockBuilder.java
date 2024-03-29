@@ -35,5 +35,9 @@ public class BlockBuilder {
         return instance;
     }
 
+    public Block getInstance() {
+        return instance;
+    }
+
 
 }
