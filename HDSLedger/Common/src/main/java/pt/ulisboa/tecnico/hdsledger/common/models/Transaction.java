@@ -2,12 +2,10 @@ package pt.ulisboa.tecnico.hdsledger.common.models;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.Base64;
 
-import com.google.gson.Gson;
 
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.utilities.Util;
@@ -20,16 +18,16 @@ public class Transaction implements Serializable{
 
     private final String receiverPublicKeyBase64;
 
-    private final int amount;
+    private final double amount;
 
     private final String nonceInBase64;
 
-    private int fee;
+    private double fee;
 
     // Signature of the transaction ID, signed by the sender
     private final String signatureInBase64;
 
-    public Transaction(PrivateKey senderPrivateKey, PublicKey senderPublicKey, PublicKey receiverPublicKey, int amount,
+    public Transaction(PrivateKey senderPrivateKey, PublicKey senderPublicKey, PublicKey receiverPublicKey, double amount,
             String nonceInBase64) {
         this.senderPublicKeyBase64 = Base64.getEncoder().encodeToString(senderPublicKey.getEncoded());
         this.receiverPublicKeyBase64 = Base64.getEncoder().encodeToString(receiverPublicKey.getEncoded());
@@ -75,11 +73,11 @@ public class Transaction implements Serializable{
         return CryptoUtil.convertBase64ToPublicKey(receiverPublicKeyBase64);
     }
 
-    public int getAmount() {
+    public double getAmount() {
         return amount;
     }
 
-    public int getFee() {
+    public double getFee() {
         return fee;
     }
 
@@ -95,11 +93,16 @@ public class Transaction implements Serializable{
         return nonceInBase64;
     }
 
-    public static byte[] CreateTransactionId(PublicKey senderPublicKey, PublicKey receiverPublicKey, int amount,
+    public void setFee(double percentageOfAmount) {
+        this.fee = amount * percentageOfAmount;
+    }
+
+    public static byte[] CreateTransactionId(PublicKey senderPublicKey, PublicKey receiverPublicKey, double amount,
             String nonceInBase64) {
         byte[] senderPublicKeyBytes = senderPublicKey.getEncoded();
         byte[] receiverPublicKeyBytes = receiverPublicKey.getEncoded();
-        byte[] amountBytes = ByteBuffer.allocate(4).putInt(amount).array();
+        long amountLong = Double.doubleToRawLongBits(amount);
+        byte[] amountBytes = ByteBuffer.allocate(8).putLong(amountLong).array();
         byte[] nonceBytes = Base64.getDecoder().decode(nonceInBase64);
 
         byte[] data = new byte[senderPublicKeyBytes.length + receiverPublicKeyBytes.length + amountBytes.length

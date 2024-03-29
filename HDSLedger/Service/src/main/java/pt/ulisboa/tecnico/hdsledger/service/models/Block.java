@@ -3,13 +3,15 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 import java.io.Serializable;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.exceptions.BlockIsFullException;
+import pt.ulisboa.tecnico.hdsledger.service.models.util.ByteArraySerializer;
 import pt.ulisboa.tecnico.hdsledger.utilities.Util;
 
-public class Block implements Serializable{
+public class Block implements Serializable {
 
     private final int index;
 
@@ -17,20 +19,17 @@ public class Block implements Serializable{
 
     private final Transaction transactions[];
 
-    private final Block previousBlock;
+    private double totalFees;
 
-    private Block nextBlock;
+    private String nodeIdOfFeeReceiver;
+
+    // private final Block previousBlock;
+
+    // private Block nextBlock;
 
     public Block(int index, Transaction[] transactions) {
         this.index = index;
         this.transactions = transactions;
-        this.previousBlock = null;
-    }
-
-    public Block(int index, Transaction[] transactions, Block previousBlock) {
-        this.index = index;
-        this.transactions = transactions;
-        this.previousBlock = previousBlock;
     }
 
     public int getIndex() {
@@ -39,22 +38,6 @@ public class Block implements Serializable{
 
     public Transaction[] getTransactions() {
         return transactions;
-    }
-
-    public Block getPreviousBlock() {
-        return previousBlock;
-    }
-
-    public Block getNextBlock() {
-        return nextBlock;
-    }
-
-    public void addNextBlock(Block nextBlock) {
-        this.nextBlock = nextBlock;
-    }
-
-    public boolean isGenesisBlock() {
-        return previousBlock == null;
     }
 
     public byte[] getHash() {
@@ -71,20 +54,39 @@ public class Block implements Serializable{
         return true;
     }
 
+    public void setNodeIdOfFeeReceiver(String nodeIdOfFeeReceiver) {
+        this.nodeIdOfFeeReceiver = nodeIdOfFeeReceiver;
+    }
+
+    public String getNodeIdOfFeeReceiver() {
+        return nodeIdOfFeeReceiver;
+    }
+
     /**
-     * This function adds a transaction to the block. The return value is one of the following:<p>
-     *  - <b>false:</b> the transaction was added successfully, and the block is not full yet <p>
-     *  - <b>true:</b> the transaction was added successfully, and the block became full with this addition. The return value is the hash of the block <p>
-     *  - <b>BlockIsFullException:</b> the block is already full, and the transaction could not be added <p>
-     *  - <b>Exception:</b> an error occurred while generating the hash of the block
+     * This function adds a transaction to the block. The return value is one of the
+     * following:
+     * <p>
+     * - <b>false:</b> the transaction was added successfully, and the block is not
+     * full yet
+     * <p>
+     * - <b>true:</b> the transaction was added successfully, and the block became
+     * full with this addition. The return value is the hash of the block
+     * <p>
+     * - <b>BlockIsFullException:</b> the block is already full, and the transaction
+     * could not be added
+     * <p>
+     * - <b>Exception:</b> an error occurred while generating the hash of the block
+     * 
      * @param transaction
      */
-    public boolean addTransactionAndCheckIfFull(Transaction transaction) throws BlockIsFullException, Exception{
+    public boolean addTransactionAndCheckIfFull(Transaction transaction) throws BlockIsFullException, Exception {
         for (int i = 0; i < transactions.length; i++) {
             if (transactions[i] == null) {
                 transactions[i] = transaction;
 
-                if(i == transactions.length - 1) {
+                totalFees += transaction.getFee();
+
+                if (i == transactions.length - 1) {
                     try {
                         generateHash();
                         return true;
@@ -111,13 +113,17 @@ public class Block implements Serializable{
     }
 
     // to json using Gson
-    public String toJson(){
+    public String toJson() {
         return new Gson().toJson(this);
     }
 
     @Override
     public String toString() {
-        return toJson();
+        final Gson gson = new GsonBuilder()
+                .registerTypeAdapter(byte[].class, new ByteArraySerializer())
+                .setPrettyPrinting()
+                .create();
+        return gson.toJson(this);
     }
 
 }

@@ -188,7 +188,7 @@ public class ClientState {
         }
     }
 
-    public void SendTransferMessage(String receiverId, int amount) throws ClientIdDoesntExistException{
+    public void SendTransferMessage(String receiverId, double amount) throws ClientIdDoesntExistException{
         System.out.println("Transfering " + amount + " coins to " + receiverId);
 
         // Find clientId in clientConfig and get publicKey
@@ -288,7 +288,7 @@ public class ClientState {
 
         int replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
 
-        Optional<Integer> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
+        Optional<Double> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
         if(balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)){
             System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));

@@ -1,5 +1,5 @@
 {
     "initial_account_balance": 1000,
-    "percentage_fee": 0.05,
+    "transaction_fee": 0.05,
     "num_transaction_in_single_block" : 1
 }

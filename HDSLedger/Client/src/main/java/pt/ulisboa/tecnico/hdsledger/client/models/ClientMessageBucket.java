@@ -1,17 +1,12 @@
 package pt.ulisboa.tecnico.hdsledger.client.models;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 
 public class ClientMessageBucket {
@@ -44,20 +39,20 @@ public class ClientMessageBucket {
         bucket.get(replyToCheckBalanceRequestId).putIfAbsent(senderId, message); //if already present, then is  duplicate message, so skip
     }
 
-    public Optional<Integer> hasValidCheckBalanceResponseQuorum(int replyToCheckBalanceId) {
+    public Optional<Double> hasValidCheckBalanceResponseQuorum(int replyToCheckBalanceId) {
         // Create mapping of value to frequency
-        HashMap<Integer, Integer> frequency = new HashMap<>();
+        HashMap<Double, Integer> frequency = new HashMap<>();
         bucket.get(replyToCheckBalanceId).values().forEach((message) -> {
             CheckBalanceResponseMessage checkBalanceResponseMessage = message.deserializeCheckBalanceResponseMessage();
-            int balance = Integer.parseInt(checkBalanceResponseMessage.getBalance());
+            double balance = Double.parseDouble(checkBalanceResponseMessage.getBalance());
             frequency.put(balance, frequency.getOrDefault(balance, 0) + 1);
         });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
+        return frequency.entrySet().stream().filter((Map.Entry<Double, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
-        }).map((Map.Entry<Integer, Integer> entry) -> {
+        }).map((Map.Entry<Double, Integer> entry) -> {
             
             return entry.getKey();
         }).findFirst();

@@ -63,9 +63,9 @@ public class CommandLineInterface {
                             System.out.println("Please provide the amount of coins to transfer:");
                             String amount = scanner.nextLine().trim();
                             try {
-                                int amountInt = Integer.parseInt(amount);
-                                if(amountInt > 0){
-                                    clientState.SendTransferMessage(receiver, amountInt);
+                                double amountDouble = Double.parseDouble(amount);
+                                if(amountDouble > 0){
+                                    clientState.SendTransferMessage(receiver, amountDouble);
                                     break;
                                 }else{
                                     System.out.println("Amount must be a positive integer.");

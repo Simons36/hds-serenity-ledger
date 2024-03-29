@@ -1,17 +1,15 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
-import java.security.PublicKey;
-
 public class AccountInfo {
     
     private String associatedClientId;
 
-    private int balance;
+    private double balance;
 
     private String publicKeyFilename;
 
 
-    public AccountInfo(String associatedClientId, int balance, String publicKeyFilename) {
+    public AccountInfo(String associatedClientId, double balance, String publicKeyFilename) {
         this.associatedClientId = associatedClientId;
         this.balance = balance;
         this.publicKeyFilename = publicKeyFilename;
@@ -22,7 +20,7 @@ public class AccountInfo {
         return associatedClientId;
     }
 
-    public int getBalance() {
+    public double getBalance() {
         return balance;
     }
 
@@ -34,11 +32,11 @@ public class AccountInfo {
         return balance - amount >= 0;
     }
 
-    public void increaseBalance(int amount) {
+    public void increaseBalance(double amount) {
         balance += amount;
     }
 
-    public void decreaseBalance(int amount) {
+    public void decreaseBalance(double amount) {
         balance -= amount;
     }
 
