@@ -27,7 +27,7 @@ done
 
 # Also generate for client
 
-for i in {1..1}
+for i in {1..2}
 do
   private_key_file="private_id_client${i}_key.der"
   public_key_file="public_id_client${i}_key.der"

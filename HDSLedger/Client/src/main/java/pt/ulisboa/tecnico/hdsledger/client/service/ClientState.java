@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.client.service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.TransferMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
 import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
@@ -68,6 +70,8 @@ public class ClientState {
     private List<Integer> finishedCheckBalanceRequests = new ArrayList<>();
     // Lock for commandLineInterface (used for displaying information in the command line in the correct order)
     private Object lock;
+    // Message counter for nonce generation
+    private long transferMessageCounter = 0;
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -189,8 +193,11 @@ public class ClientState {
 
         // Find clientId in clientConfig and get publicKey
         // If not found, throw ClientIdDoesntExistException
+
+        // Generate nonce
+        byte[] nonce = CryptoUtil.generateNonce(++transferMessageCounter);
         
-        Transaction transaction = new Transaction(this.privateKey, publicKey, getPublicKeyOfClient(receiverId), amount, receiverId);
+        Transaction transaction = new Transaction(this.privateKey, publicKey, getPublicKeyOfClient(receiverId), amount, Base64.getEncoder().encodeToString(nonce));
 
         try {
             ConsensusMessage transferMessage = new ConsensusMessageBuilder(clientId, Message.Type.TRANSFER)

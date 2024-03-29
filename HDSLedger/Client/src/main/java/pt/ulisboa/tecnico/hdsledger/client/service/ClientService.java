@@ -6,10 +6,12 @@ import java.util.Arrays;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfigBuilder;
 import pt.ulisboa.tecnico.hdsledger.utilities.enums.TypeOfProcess;
@@ -115,7 +117,11 @@ public class ClientService implements UDPService {
 
                                     this.clientState.uponCheckBalanceResponse((ConsensusMessage) message);
                                     break;
-                                    
+
+                                case ERROR:
+                                    ClientErrorMessage errorMessage = (ClientErrorMessage) message;
+                                    System.out.println("Error: " + errorMessage.getErrorMessage());
+                                    break;
 
                                 case IGNORE:
                                     if(verboseMode)
