@@ -1,9 +1,11 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
+import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -11,6 +13,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+
+import com.google.gson.Gson;
 
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
@@ -24,6 +28,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
@@ -432,28 +437,14 @@ public class NodeService implements UDPService {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            String value = commitValue.get();
+            String blockInJsonFomrat = commitValue.get();
 
-            // Append value to the ledger (must be synchronized to be thread-safe)
-            synchronized (ledger) {
+            Block block = new Gson().fromJson(blockInJsonFomrat, Block.class);
 
-                // Increment size of ledger to accommodate current instance
-                ledger.ensureCapacity(consensusInstance);
-                while (ledger.size() < consensusInstance - 1) {
-                    ledger.add("");
-                }
-
-                ledger.add(consensusInstance - 1, value);
+            // Append block to ledger
+            this.HandleBlockAppend(block);
 
             
-                LOGGER.log(Level.INFO,
-                        MessageFormat.format(
-                                "{0} - Current Ledger: {1}",
-                                config.getId(), String.join("", ledger)));
-
-                // need to inform clients of ledger change
-                clientService.broadcastLedgerUpdate(value, consensusInstance);
-            }
 
             lastDecidedConsensusInstance.getAndIncrement();
 
@@ -601,42 +592,170 @@ public class NodeService implements UDPService {
     public void uponTransfer(Transaction transaction, String senderId, String receiverId, int messageId) {
         System.out.println(transaction);
 
-        // Check if senderID account has enough balance
+        synchronized (currentBlock) {
+            // Check if senderID account has enough balance according to transactions already present in this block
+            // (that is, we need to take accountsInfo, create a temporary accountInfo with the transactions present in
+            // the current block applied, and check if the sender has enough balance to make the transaction)
 
-        if(this.accountsInfo.get(senderId).getBalance() < transaction.getAmount()){
-            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Sender {1} does not have enough balance to transfer {2} to {3}",
-                    this.config.getId(), senderId, transaction.getAmount(), receiverId));
+            AccountInfo tempAccountOfSender = new AccountInfo(this.accountsInfo.get(senderId).getAssociatedClientId(), 
+                                                              this.accountsInfo.get(senderId).getBalance(), 
+                                                              this.accountsInfo.get(senderId).getPublicKeyFilename());
+
+            int balanceIfCurrentBlockWasApplied = 0;
+            try {
+                balanceIfCurrentBlockWasApplied = ApplyChangesToAccountOfCurrentBlock(tempAccountOfSender);
+            } catch (Exception e) {
+                e.printStackTrace();
+                this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+                return;
+            }
             
-            this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.INSUFFICIENT_BALANCE);
-            return;
-        }
 
-        // All the checks passed; we now need to add the transaction to the current block
-        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Adding transaction to block: {1}",
-                this.config.getId(), transaction.getTransactionIdInHex()));
+            if(balanceIfCurrentBlockWasApplied < transaction.getAmount()){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Sender {1} does not have enough balance to transfer {2} to {3}",
+                        this.config.getId(), senderId, transaction.getAmount(), receiverId));
+                
+                this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.INSUFFICIENT_BALANCE);
+                return;
+            }
 
-        try {
+            // All the checks passed; we now need to add the transaction to the current block
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Adding transaction to block: {1}",
+                    this.config.getId(), transaction.getTransactionIdInHex()));
 
-            synchronized (currentBlock) {
-                boolean isFull = currentBlock.addTransactionAndCheckIfFull(transaction);
-                System.out.println(currentBlock);
+            try {
 
-                if(isFull){
-                    // Block is full, we can start consensus on this block
-                    Block newBlock = currentBlock.build();
-                    this.startConsensus(newBlock.toJson());
+                    boolean isFull = currentBlock.addTransactionAndCheckIfFull(transaction);
+                    System.out.println(currentBlock);
+
+                    if(isFull){
+                        // Block is full, we can start consensus on this block
+                        Block newBlock = currentBlock.build();
+                        this.startConsensus(newBlock.toJson());
+                        
+                        // Reset current block
+                        ResetCurrentBlockBuilder();
+                    }
                     
-                    // Reset current block
-                    ResetCurrentBlockBuilder();
+                } catch (BlockIsFullException e) {
+                    // TODO: handle exception
+                } catch (Exception e) {
+                    this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+                }
+            
+        }
+    }
+
+    /**
+     * This function should be called whenever an agreement about which block to be appended is reached (DECIDE part of the iBFT protocol).
+     */
+    private void HandleBlockAppend(Block block){
+
+        synchronized(temporaryLedger){
+            // first we need to process the transactions in the block
+            for(Transaction transaction : block.getTransactions()){
+                try {
+                    ProcessTransaction(transaction);
+                    
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
 
-        } catch (BlockIsFullException e) {
-            // TODO: handle exception
-        } catch (Exception e) {
-            this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+            this.temporaryLedger.add(block);
         }
+
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Block appended to ledger: {1}",
+                    this.config.getId(), block));
+
+    }
+
+    /**
+     * This function will apply all transactions in the current block to the accountInfo, and return <b> the new "would be" balance. </b>
+     * @param accountInfo
+     * @return The new balance of the account if all transactions in the current block were applied to the accountInfo
+     */
+    private int ApplyChangesToAccountOfCurrentBlock(AccountInfo accountInfo) throws Exception{
+        // Apply all transactions in the current block to the accountInfo
+
+        Block currentBlockInstance = this.currentBlock.getInstance();
+        int balanceOfAccount = accountInfo.getBalance();
+        String pathToPublicKey = accountInfo.getPublicKeyFilename();
+        System.out.println(pathToPublicKey);
+
+        try {
+
+            for(Transaction transaction : currentBlockInstance.getTransactions()){
+
+                if(transaction != null){
+
+                    if(CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getSenderPublicKey())){ // this means that the sender of this transaction
+                                                                                                       // was the account holder
+                        balanceOfAccount -= transaction.getAmount();
         
+                    }
+    
+                    if(CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getReceiverPublicKey())){ // this means that the receiver of this transaction
+                                                                                                         // was the account holder
+                        balanceOfAccount += transaction.getAmount();
+                    }
+
+                }
+
+            }
+            
+        } catch (Exception e) {
+            throw e;
+        }
+
+        return balanceOfAccount;
+
+    }
+
+    private void ProcessTransaction(Transaction transaction) throws Exception{
+
+        synchronized(accountsInfo){
+
+            
+            PublicKey publicKeyOfSender;
+            PublicKey publicKeyOfReceiver;
+
+            try {
+                publicKeyOfSender = transaction.getSenderPublicKey();
+                publicKeyOfReceiver = transaction.getReceiverPublicKey();
+                
+            } catch (Exception e) {
+            throw e;
+            }
+
+            // Get sender ID
+            String senderId = accountsInfo.entrySet().stream()
+                .filter(entry -> {
+                    return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfSender);
+                })
+                .map(Map.Entry::getKey) // Extract the key if a matching value is found
+                .findFirst() // Get the first matching key, if any
+                .orElse(null); // Return null if no matching key is found
+
+            // Get receiver ID
+            String receiverId = accountsInfo.entrySet().stream()
+                .filter(entry -> {
+                    return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfReceiver);
+                })
+                .map(Map.Entry::getKey) // Extract the key if a matching value is found
+                .findFirst() // Get the first matching key, if any
+                .orElse(null); // Return null if no matching key is found
+                
+            if(senderId == null || receiverId == null){
+                //TODO: idk
+            }
+            
+            //TODO: implement fee
+            accountsInfo.get(senderId).decreaseBalance(transaction.getAmount());
+            accountsInfo.get(receiverId).increaseBalance(transaction.getAmount());
+                
+        }
+
     }
 
     private boolean JustifyPrePrepare(ConsensusMessage consensusMessage) {

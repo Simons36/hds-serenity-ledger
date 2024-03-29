@@ -301,18 +301,7 @@ public class ClientService implements UDPService{
             e.printStackTrace();
         }
     }
-
-    public void broadcastLedgerUpdate(String value, int consensusInstance){
-
-        LedgerUpdateMessage ledgerUpdateMessage = new LedgerUpdateMessage(value);
-
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(thisNodeConfig.getId(), Message.Type.LEDGER_UPDATE)
-                .setMessage(ledgerUpdateMessage.toJson())
-                .setConsensusInstance(consensusInstance)
-                .build();
-
-        linkToClients.broadcast(consensusMessage);
-    }
+    
 
     public void SendErrorMessage(String senderId, int originalMessageId, ClientErrorMessage.ErrorType errorType){
         ClientErrorMessage errorMessage = new ClientErrorMessage(thisNodeConfig.getId(), errorType, originalMessageId);

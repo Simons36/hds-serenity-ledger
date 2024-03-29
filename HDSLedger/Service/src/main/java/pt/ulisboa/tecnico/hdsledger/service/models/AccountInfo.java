@@ -16,6 +16,7 @@ public class AccountInfo {
         this.balance = balance;
         this.publicKeyFilename = publicKeyFilename;
     }
+    
 
     public String getAssociatedClientId() {
         return associatedClientId;
