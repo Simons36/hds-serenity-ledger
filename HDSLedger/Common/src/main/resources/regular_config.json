@@ -50,5 +50,13 @@
         "port": 4001,
         "privateKeyPath" : "Keystore/private_id_client1_key.der",
         "publicKeyPath" : "Keystore/public_id_client1_key.der"
+    },
+    {
+        "type" : "client",
+        "id": "client2",
+        "hostname": "localhost",
+        "port": 4002,
+        "privateKeyPath" : "Keystore/private_id_client2_key.der",
+        "publicKeyPath" : "Keystore/public_id_client2_key.der"
     }
 ]

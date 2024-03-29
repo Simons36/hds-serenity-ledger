@@ -13,7 +13,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.Util;
 
 public class Transaction {
 
-    private final String transactionId;
+    private final byte[] rawTransactionId;
 
     private final String senderPublicKeyBase64;
 
@@ -25,7 +25,7 @@ public class Transaction {
 
     private int fee;
 
-    // Signature of the transaction, signed by the sender
+    // Signature of the transaction ID, signed by the sender
     private final String signatureInBase64;
 
     public Transaction(PrivateKey senderPrivateKey, PublicKey senderPublicKey, PublicKey receiverPublicKey, int amount,
@@ -34,7 +34,7 @@ public class Transaction {
         this.receiverPublicKeyBase64 = Base64.getEncoder().encodeToString(receiverPublicKey.getEncoded());
         this.amount = amount;
 
-        this.transactionId = CreateTransactionId(senderPublicKey, receiverPublicKey, amount, nonceInBase64);
+        this.rawTransactionId = CreateTransactionId(senderPublicKey, receiverPublicKey, amount, nonceInBase64);
 
         this.nonceInBase64 = nonceInBase64;
 
@@ -42,7 +42,7 @@ public class Transaction {
 
         try {
             this.signatureInBase64 = Base64.getEncoder()
-                    .encodeToString(CryptoUtil.sign(Base64.getDecoder().decode(transactionId), senderPrivateKey));
+                    .encodeToString(CryptoUtil.sign(rawTransactionId, senderPrivateKey));
 
         } catch (Exception e) {
             throw new RuntimeException("Error signing transaction");
@@ -50,8 +50,12 @@ public class Transaction {
 
     }
 
-    public String getTransactionId() {
-        return transactionId;
+    public String getTransactionIdInHex() {
+        return Util.bytesToHex(rawTransactionId);
+    }
+
+    public byte[] getRawTransactionId() {
+        return rawTransactionId;
     }
 
     public String getSenderPublicKeyBase64() {
@@ -82,7 +86,15 @@ public class Transaction {
         return this.signatureInBase64;
     }
 
-    private String CreateTransactionId(PublicKey senderPublicKey, PublicKey receiverPublicKey, int amount,
+    public byte[] getSignature() {
+        return Base64.getDecoder().decode(signatureInBase64);
+    }
+
+    public String getNonceInBase64() {
+        return nonceInBase64;
+    }
+
+    public static byte[] CreateTransactionId(PublicKey senderPublicKey, PublicKey receiverPublicKey, int amount,
             String nonceInBase64) {
         byte[] senderPublicKeyBytes = senderPublicKey.getEncoded();
         byte[] receiverPublicKeyBytes = receiverPublicKey.getEncoded();
@@ -101,7 +113,7 @@ public class Transaction {
 
         try {
             byte[] hash = CryptoUtil.hash(data);
-            return Util.bytesToHex(hash);
+            return hash;
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("Error hashing transaction data.");
@@ -112,7 +124,7 @@ public class Transaction {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("TX-")
-                .append(transactionId)
+                .append(getTransactionIdInHex())
                 .append(":\n")
                 .append(" From: ")
                 .append(CryptoUtil.getAbbreviationOfHash(senderPublicKeyBase64) + "\n")
@@ -121,7 +133,11 @@ public class Transaction {
                 .append(" Amount: ")
                 .append(amount + "\n")
                 .append(" Fee: ")
-                .append(fee + "\n");
+                .append(fee + "\n")
+                .append(" Nonce: ")
+                .append(nonceInBase64 + "\n")
+                .append(" Signature: ")
+                .append(signatureInBase64 + "\n");
 
         return sb.toString();
     }

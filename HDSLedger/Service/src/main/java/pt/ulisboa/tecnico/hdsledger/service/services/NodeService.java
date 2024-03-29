@@ -587,8 +587,9 @@ public class NodeService implements UDPService {
 
     public void uponTransfer(Transaction transaction, String senderId, String receiverId) {
 
+        // First thing we do is to verify that the message was actuall
         
-        System.out.println("FUIHEFIUWHIUFHEU");
+        System.out.println(transaction);
     }
 
     private boolean JustifyPrePrepare(ConsensusMessage consensusMessage) {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.logging.Level;
 
 import javax.lang.model.type.ErrorType;
@@ -163,6 +164,57 @@ public class ClientService implements UDPService{
             return;
         }
         
+        // We now verify the if the message was actually sent by the sender
+        // We do this by verifying that the signature of the transaction is valid
+        // AsymmetricDecrypt(signature, senderPublicKey) == transactionId
+
+
+        try {
+            if(!CryptoUtil.verifySignature(transaction.getRawTransactionId(), transaction.getSignature(), transaction.getSenderPublicKey())){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Invalid signature for transaction",
+                        thisNodeConfig.getId()));
+                
+                SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.INVALID_SIGNATURE);
+                return;
+            }
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Error while verifying signature",
+                    thisNodeConfig.getId()));
+
+            SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+            return;
+        }
+        
+        
+        // Now we will verify if transactionID = hash(senderPublicKey || receiverPublicKey || amount || nonce)
+
+        try {
+
+            byte[] newTransactionID = Transaction.CreateTransactionId(transaction.getSenderPublicKey(), 
+                                            transaction.getReceiverPublicKey(),
+                                            transaction.getAmount(),
+                                            transaction.getNonceInBase64());
+
+            // Compare the two transaction IDs
+
+            if(!Arrays.equals(newTransactionID, transaction.getRawTransactionId())){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Transaction ID does not match the hash of the transaction",
+                        thisNodeConfig.getId()));
+                
+                SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.INVALID_SIGNATURE);
+                return;
+            }
+            
+        }  catch (Exception e) {
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Error while verifying transaction ID",
+                    thisNodeConfig.getId()));
+
+            SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+            return;
+        }
+        
+        
+        
         
         this.nodeService.uponTransfer(transaction, originalSenderId, receiverId);
     }
@@ -251,7 +303,7 @@ public class ClientService implements UDPService{
     }
 
     private void SendErrorMessage(String senderId, int originalMessageId, ClientErrorMessage.ErrorType errorType){
-        ClientErrorMessage errorMessage = new ClientErrorMessage(senderId, errorType, originalMessageId);
+        ClientErrorMessage errorMessage = new ClientErrorMessage(thisNodeConfig.getId(), errorType, originalMessageId);
 
         this.linkToClients.send(senderId, errorMessage);
     }

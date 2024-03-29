@@ -11,6 +11,8 @@ public class ClientErrorMessage extends Message {
         INVALID_SENDER_ID("Provided sender id does not exist"),
         INVALID_RECEIVER_ID("Provided receiver id does not exist"),
         INVALID_SENDER_PK("Provided sender public key is invalid"),
+        INVALID_SIGNATURE("Provided signature of the transaction ID is invalid"),
+        INVALID_TRANSACTION_ID("Provided transaction ID is invalid"),
         UNKNOWN_ERROR("Unknown error");
 
         private String message;

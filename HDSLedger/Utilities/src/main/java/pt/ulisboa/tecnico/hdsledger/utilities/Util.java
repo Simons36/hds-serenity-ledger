@@ -15,6 +15,27 @@ public class Util {
         }
         return hexString.toString();
     }
+
+    public static byte[] hexToBytes(String hexString) {
+        // Ensure that the hexadecimal string has an even number of characters
+        if (hexString.length() % 2 != 0) {
+            throw new IllegalArgumentException("Invalid hexadecimal string length");
+        }
+    
+        // Allocate a byte array half the length of the hexadecimal string
+        byte[] bytes = new byte[hexString.length() / 2];
+    
+        // Iterate over the hexadecimal string, converting each pair of characters to a byte
+        for (int i = 0; i < hexString.length(); i += 2) {
+            // Extract the substring representing a pair of characters
+            String hexPair = hexString.substring(i, i + 2);
+            // Convert the hexadecimal pair to a byte and store it in the byte array
+            bytes[i / 2] = (byte) Integer.parseInt(hexPair, 16);
+        }
+    
+        return bytes;
+    }
+    
     
     
     
