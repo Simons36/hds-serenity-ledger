@@ -456,7 +456,7 @@ public class NodeService implements UDPService {
     }
 
     //TODO: Remove senderPublicKeyPath
-    public synchronized int uponCheckBalance(ConsensusMessage message) throws HDSSException{
+    public synchronized double uponCheckBalance(ConsensusMessage message) throws HDSSException{
 
         String clientId = message.getSenderId();
 
@@ -601,7 +601,7 @@ public class NodeService implements UDPService {
                                                               this.accountsInfo.get(senderId).getBalance(), 
                                                               this.accountsInfo.get(senderId).getPublicKeyFilename());
 
-            int balanceIfCurrentBlockWasApplied = 0;
+            double balanceIfCurrentBlockWasApplied = 0;
             try {
                 balanceIfCurrentBlockWasApplied = ApplyChangesToAccountOfCurrentBlock(tempAccountOfSender);
             } catch (Exception e) {
@@ -675,11 +675,11 @@ public class NodeService implements UDPService {
      * @param accountInfo
      * @return The new balance of the account if all transactions in the current block were applied to the accountInfo
      */
-    private int ApplyChangesToAccountOfCurrentBlock(AccountInfo accountInfo) throws Exception{
+    private double ApplyChangesToAccountOfCurrentBlock(AccountInfo accountInfo) throws Exception{
         // Apply all transactions in the current block to the accountInfo
 
         Block currentBlockInstance = this.currentBlock.getInstance();
-        int balanceOfAccount = accountInfo.getBalance();
+        double balanceOfAccount = accountInfo.getBalance();
         String pathToPublicKey = accountInfo.getPublicKeyFilename();
         System.out.println(pathToPublicKey);
 

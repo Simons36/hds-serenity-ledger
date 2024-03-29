@@ -69,7 +69,7 @@ public class ClientService implements UDPService{
 
         senderPublicKeyPath = "../" + senderPublicKeyPath;
 
-        int balance;
+        double balance;
 
         // Call for balance check in NodeService
         try {
@@ -82,7 +82,7 @@ public class ClientService implements UDPService{
         int replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceMessage().getCheckRequestBalanceId();
 
         // Send response to client
-        CheckBalanceResponseMessage checkBalanceResponseMessage = new CheckBalanceResponseMessage(Integer.toString(balance), replyToCheckBalanceRequestId);
+        CheckBalanceResponseMessage checkBalanceResponseMessage = new CheckBalanceResponseMessage(Double.toString(balance), replyToCheckBalanceRequestId);
 
         ConsensusMessage responseMessage = new ConsensusMessageBuilder(thisNodeConfig.getId(), Message.Type.CHECK_BALANCE_RESPONSE)
                 .setMessage(checkBalanceResponseMessage.toJson())
@@ -301,7 +301,7 @@ public class ClientService implements UDPService{
             e.printStackTrace();
         }
     }
-    
+
 
     public void SendErrorMessage(String senderId, int originalMessageId, ClientErrorMessage.ErrorType errorType){
         ClientErrorMessage errorMessage = new ClientErrorMessage(thisNodeConfig.getId(), errorType, originalMessageId);

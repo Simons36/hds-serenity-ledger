@@ -3,10 +3,12 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 import java.io.Serializable;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.exceptions.BlockIsFullException;
+import pt.ulisboa.tecnico.hdsledger.service.models.util.ByteArraySerializer;
 import pt.ulisboa.tecnico.hdsledger.utilities.Util;
 
 public class Block implements Serializable{
@@ -117,7 +119,13 @@ public class Block implements Serializable{
 
     @Override
     public String toString() {
-        return toJson();
+        final Gson gson = new GsonBuilder()
+            .registerTypeAdapter(byte[].class, new ByteArraySerializer())
+            .setPrettyPrinting()
+            .create();
+        return gson.toJson(this);
     }
 
 }
+
+
