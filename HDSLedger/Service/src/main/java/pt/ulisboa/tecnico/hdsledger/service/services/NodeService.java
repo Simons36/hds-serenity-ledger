@@ -77,9 +77,6 @@ public class NodeService implements UDPService {
     // Last decided consensus instance
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
-    // Ledger (for now, just a list of strings)
-    private ArrayList<String> ledger = new ArrayList<String>();
-
     // Client Service
     private ClientService clientService;
 
@@ -92,8 +89,8 @@ public class NodeService implements UDPService {
     // Current block to append incoming transactions
     private BlockBuilder currentBlock;
 
-    // Temporary ledger (for testing purposes)
-    private ArrayList<Block> temporaryLedger = new ArrayList<Block>();
+    // Ledger
+    private ArrayList<Block> ledger = new ArrayList<Block>();
 
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs, ServiceConfig serviceConfig) {
@@ -120,10 +117,6 @@ public class NodeService implements UDPService {
 
     public int getConsensusInstance() {
         return this.consensusInstance.get();
-    }
-
-    public ArrayList<String> getLedger() {
-        return this.ledger;
     }
 
     public void addClientService(ClientService clientService){
@@ -162,6 +155,8 @@ public class NodeService implements UDPService {
 
 
     private void InitializeAccounts(ProcessConfig[] clientsConfigs) {
+
+        // First we create the accounts for the clients
         Arrays.stream(clientsConfigs)
                 .forEach(clientConfig -> {
                     try {
@@ -170,6 +165,18 @@ public class NodeService implements UDPService {
                         throw e;
                     }
                 });
+
+        // Now we create accounts for each of the nodes (this will be used for transaction's fees)
+
+        Arrays.stream(this.nodesConfig)
+                .forEach(nodeConfig -> {
+                    try {
+                        CreateAccount(nodeConfig.getId(), 0, "../" + nodeConfig.getPublicKeyPath());
+                    } catch (HDSSException e) {
+                        throw e;
+                    }
+                });
+
     }
     
 
@@ -620,6 +627,10 @@ public class NodeService implements UDPService {
             }
 
             // All the checks passed; we now need to add the transaction to the current block
+            // Last thing, set fee
+
+            transaction.setFee(this.serviceConfig.getTransactionFee());
+
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Adding transaction to block: {1}",
                     this.config.getId(), transaction.getTransactionIdInHex()));
 
@@ -630,7 +641,7 @@ public class NodeService implements UDPService {
 
                     if(isFull){
                         // Block is full, we can start consensus on this block
-                        Block newBlock = currentBlock.build();
+                        Block newBlock = currentBlock.build(this.config.getId());
                         this.startConsensus(newBlock.toJson());
                         
                         // Reset current block
@@ -651,7 +662,7 @@ public class NodeService implements UDPService {
      */
     private void HandleBlockAppend(Block block){
 
-        synchronized(temporaryLedger){
+        synchronized(ledger){
             // first we need to process the transactions in the block
             for(Transaction transaction : block.getTransactions()){
                 try {
@@ -662,7 +673,11 @@ public class NodeService implements UDPService {
                 }
             }
 
-            this.temporaryLedger.add(block);
+            // Now need to pay the fee to the node that created the block
+
+            ProcessFeePayment(block);
+
+            this.ledger.add(block);
         }
 
         LOGGER.log(Level.INFO, MessageFormat.format("{0} - Block appended to ledger: {1}",
@@ -681,7 +696,6 @@ public class NodeService implements UDPService {
         Block currentBlockInstance = this.currentBlock.getInstance();
         double balanceOfAccount = accountInfo.getBalance();
         String pathToPublicKey = accountInfo.getPublicKeyFilename();
-        System.out.println(pathToPublicKey);
 
         try {
 
@@ -697,7 +711,7 @@ public class NodeService implements UDPService {
     
                     if(CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getReceiverPublicKey())){ // this means that the receiver of this transaction
                                                                                                          // was the account holder
-                        balanceOfAccount += transaction.getAmount();
+                        balanceOfAccount += (transaction.getAmount() - transaction.getFee());
                     }
 
                 }
@@ -752,10 +766,20 @@ public class NodeService implements UDPService {
             
             //TODO: implement fee
             accountsInfo.get(senderId).decreaseBalance(transaction.getAmount());
-            accountsInfo.get(receiverId).increaseBalance(transaction.getAmount());
+            accountsInfo.get(receiverId).increaseBalance(transaction.getAmount() - transaction.getFee());
                 
         }
 
+    }
+
+    private void ProcessFeePayment(Block block){
+        double totalFees = 0;
+
+        for(Transaction transaction : block.getTransactions()){
+            totalFees += transaction.getFee();
+        }
+
+        accountsInfo.get(block.getNodeIdOfFeeReceiver()).increaseBalance(totalFees);
     }
 
     private boolean JustifyPrePrepare(ConsensusMessage consensusMessage) {
@@ -880,7 +904,7 @@ public class NodeService implements UDPService {
     }
 
     private void ResetCurrentBlockBuilder(){
-        this.currentBlock = new BlockBuilder(temporaryLedger.size(), serviceConfig.getNumTransactionsInBlock());
+        this.currentBlock = new BlockBuilder(ledger.size(), serviceConfig.getNumTransactionsInBlock());
     }
 
     @Override

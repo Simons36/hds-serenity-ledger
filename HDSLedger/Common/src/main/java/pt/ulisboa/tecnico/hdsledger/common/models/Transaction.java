@@ -93,6 +93,10 @@ public class Transaction implements Serializable{
         return nonceInBase64;
     }
 
+    public void setFee(double percentageOfAmount) {
+        this.fee = amount * percentageOfAmount;
+    }
+
     public static byte[] CreateTransactionId(PublicKey senderPublicKey, PublicKey receiverPublicKey, double amount,
             String nonceInBase64) {
         byte[] senderPublicKeyBytes = senderPublicKey.getEncoded();

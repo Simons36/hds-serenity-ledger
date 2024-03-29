@@ -29,9 +29,12 @@ public class BlockBuilder {
         }
     }
 
-    public Block build() throws BlockNotYetFullException{
+    public Block build(String leader) throws BlockNotYetFullException{
         if(!instance.isFull())
             throw new BlockNotYetFullException();
+
+        instance.setNodeIdOfFeeReceiver(leader);
+        
         return instance;
     }
 
