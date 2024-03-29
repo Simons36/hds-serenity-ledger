@@ -1,25 +1,22 @@
 package pt.ulisboa.tecnico.hdsledger.service.services;
 
 import java.io.IOException;
-import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.Arrays;
-import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
-
-import javax.lang.model.type.ErrorType;
 
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.LedgerUpdateMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
-import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
@@ -40,6 +37,9 @@ public class ClientService implements UDPService{
 
     // Node service to be able to invoke consensus algorithm
     private final NodeService nodeService;
+
+    // Map that maps clients to sent nonces (in base 64)
+    private final Map<String, List<String>> sentNonces = new HashMap<>(); //<clientId, List<nonceInBase64>>
 
     public ClientService(Link linkToClients, ProcessConfig thisNodeConfig, ProcessConfig[] clientsConfig, NodeService nodeService) {
 
@@ -201,7 +201,7 @@ public class ClientService implements UDPService{
                 LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Transaction ID does not match the hash of the transaction",
                         thisNodeConfig.getId()));
                 
-                SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.INVALID_SIGNATURE);
+                SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.INVALID_TRANSACTION_ID);
                 return;
             }
             
@@ -213,10 +213,22 @@ public class ClientService implements UDPService{
             return;
         }
         
+        // Lastly, we verify if the nonce is valid (it has never been sent before by this client)
+        if(!sentNonces.containsKey(originalSenderId)){
+            sentNonces.put(originalSenderId, List.of(transaction.getNonceInBase64()));
+        } else {
+            if(sentNonces.get(originalSenderId).contains(transaction.getNonceInBase64())){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Nonce has already been used",
+                        thisNodeConfig.getId()));
+                
+                SendErrorMessage(originalSenderId, messageId, ClientErrorMessage.ErrorType.INVALID_NONCE);
+                return;
+            }
+        }
+
+        // We have now most of the verifications. The missing verifications (amount is correct) will be done in the nodeService
         
-        
-        
-        this.nodeService.uponTransfer(transaction, originalSenderId, receiverId);
+        this.nodeService.uponTransfer(transaction, originalSenderId, receiverId, messageId);
     }
 
     @Override
@@ -302,7 +314,7 @@ public class ClientService implements UDPService{
         linkToClients.broadcast(consensusMessage);
     }
 
-    private void SendErrorMessage(String senderId, int originalMessageId, ClientErrorMessage.ErrorType errorType){
+    public void SendErrorMessage(String senderId, int originalMessageId, ClientErrorMessage.ErrorType errorType){
         ClientErrorMessage errorMessage = new ClientErrorMessage(thisNodeConfig.getId(), errorType, originalMessageId);
 
         this.linkToClients.send(senderId, errorMessage);

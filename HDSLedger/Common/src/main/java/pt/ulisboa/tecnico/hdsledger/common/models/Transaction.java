@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.common.models;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
@@ -11,7 +12,7 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.utilities.Util;
 
-public class Transaction {
+public class Transaction implements Serializable{
 
     private final byte[] rawTransactionId;
 

@@ -1,5 +1,9 @@
 package pt.ulisboa.tecnico.hdsledger.utilities;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
+
 public class Util {
 
     public static String bytesToHex(byte[] bytes) {
@@ -35,6 +39,30 @@ public class Util {
     
         return bytes;
     }
+
+    // Utility method to serialize an object to a byte array
+    public static byte[] serialize(Object obj) {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(bos);
+            oos.writeObject(obj);
+            oos.flush();
+            return bos.toByteArray();
+        } catch (IOException e) {
+            // Handle serialization error
+            e.printStackTrace();
+        } finally {
+            try {
+                bos.close();
+            } catch (IOException e) {
+                // Handle stream closing error
+                e.printStackTrace();
+            }
+        }
+        return null;
+}
+
     
     
     

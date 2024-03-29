@@ -15,6 +15,7 @@ import java.util.logging.Level;
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
@@ -26,9 +27,12 @@ import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilde
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.RoundTimer;
+import pt.ulisboa.tecnico.hdsledger.service.models.builder.BlockBuilder;
+import pt.ulisboa.tecnico.hdsledger.service.models.exceptions.BlockIsFullException;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
@@ -80,6 +84,12 @@ public class NodeService implements UDPService {
     // Service Configurations
     private final ServiceConfig serviceConfig;
 
+    // Current block to append incoming transactions
+    private BlockBuilder currentBlock;
+
+    // Temporary ledger (for testing purposes)
+    private ArrayList<Block> temporaryLedger = new ArrayList<Block>();
+
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs, ServiceConfig serviceConfig) {
 
@@ -94,6 +104,9 @@ public class NodeService implements UDPService {
         this.serviceConfig = serviceConfig;
         
         InitializeAccounts(clientsConfigs);
+
+        // Start initialization of block to be built
+        ResetCurrentBlockBuilder();
     }
 
     public ProcessConfig getConfig() {
@@ -585,11 +598,45 @@ public class NodeService implements UDPService {
         // -------------------
     }
 
-    public void uponTransfer(Transaction transaction, String senderId, String receiverId) {
-
-        // First thing we do is to verify that the message was actuall
-        
+    public void uponTransfer(Transaction transaction, String senderId, String receiverId, int messageId) {
         System.out.println(transaction);
+
+        // Check if senderID account has enough balance
+
+        if(this.accountsInfo.get(senderId).getBalance() < transaction.getAmount()){
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Sender {1} does not have enough balance to transfer {2} to {3}",
+                    this.config.getId(), senderId, transaction.getAmount(), receiverId));
+            
+            this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.INSUFFICIENT_BALANCE);
+            return;
+        }
+
+        // All the checks passed; we now need to add the transaction to the current block
+        LOGGER.log(Level.INFO, MessageFormat.format("{0} - Adding transaction to block: {1}",
+                this.config.getId(), transaction.getTransactionIdInHex()));
+
+        try {
+
+            synchronized (currentBlock) {
+                boolean isFull = currentBlock.addTransactionAndCheckIfFull(transaction);
+                System.out.println(currentBlock);
+
+                if(isFull){
+                    // Block is full, we can start consensus on this block
+                    Block newBlock = currentBlock.build();
+                    this.startConsensus(newBlock.toJson());
+                    
+                    // Reset current block
+                    ResetCurrentBlockBuilder();
+                }
+            }
+
+        } catch (BlockIsFullException e) {
+            // TODO: handle exception
+        } catch (Exception e) {
+            this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+        }
+        
     }
 
     private boolean JustifyPrePrepare(ConsensusMessage consensusMessage) {
@@ -711,6 +758,10 @@ public class NodeService implements UDPService {
         }
 
         this.accountsInfo.put(clientId, new AccountInfo(clientId, initialBalance, clientPublicKeyPath));
+    }
+
+    private void ResetCurrentBlockBuilder(){
+        this.currentBlock = new BlockBuilder(temporaryLedger.size(), serviceConfig.getNumTransactionsInBlock());
     }
 
     @Override
