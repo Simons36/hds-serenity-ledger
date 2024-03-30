@@ -75,6 +75,10 @@ public class ClientState {
     private long transferMessageCounter = 0;
     // List with transfer request IDs that have already finished
     private List<Long> finishedTransferRequests = new ArrayList<>();
+    // List with all outputs from received checkBalance and transfer messages
+    private ArrayList<String> allOutputs = new ArrayList<>();
+
+    private static final int MAX_TIME_WAIT = 5; // 10 seconds
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -298,6 +302,11 @@ public class ClientState {
 
         if(balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)){
             System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));
+
+            // Save the message inside the list
+            String output = clientId + " - Balance: " + String.valueOf(balance.get()) + "\n";
+            allOutputs.add(output);
+
             finishedCheckBalanceRequests.add(replyToCheckBalanceRequestId);
             synchronized(lock){
                 lock.notify();
@@ -317,8 +326,14 @@ public class ClientState {
         if(success.isPresent() && !finishedTransferRequests.contains(replyToTransferRequestId)){
             if(success.get()){
                 System.out.println("Server replied with success.");
+
+                // add to the list of outputs
+                allOutputs.add("Server replied with success.\n");
             }else{
                 System.out.println("Server replied with the following error: " + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
+
+                // add to the list of outputs
+                allOutputs.add("Server replied with the following error: " + transferResponseMessageBucket.getTransferError(replyToTransferRequestId) + "\n");
             }
             finishedTransferRequests.add(replyToTransferRequestId);
             synchronized(lock){
@@ -328,7 +343,7 @@ public class ClientState {
         }
     }
 
-    public void ExecuteCommands(String commandsFilePath) throws IOException {
+    public void ExecuteCommands(String commandsFilePath) throws IOException, InterruptedException {
 
         try {
             List<Command> commands = ImportCommandsFile(commandsFilePath);
@@ -352,9 +367,47 @@ public class ClientState {
                             e.printStackTrace();
                         }
                         break;
+
+                    case "check_balance":
+                        Object lock_balance = new Object();
+                        SendCheckBalanceMessage(lock_balance);
+                        WaitForLock(lock_balance);
+
+                        break;
+
+                    case "transfer":
+                        Object lock_transfer = new Object();
+                        String clientID = (String) command.getArguments().get(0);
+
+                        try {
+                            Double amount = (Double) command.getArguments().get(1);
+                            if(amount <= 0){
+                                allOutputs.add("Amount must be a positive integer.\n");
+                            }
+                            
+                            else{
+                                SendTransferMessage(clientID, amount, lock_transfer);
+                            }
+
+                        } catch (NumberFormatException e) {
+                            allOutputs.add("Amount must be a positive integer.\n");
+
+                        } catch (ClientIdDoesntExistException e){
+                            allOutputs.add("Client with id " + clientID + " doesn't exist.\n");
+                            break;
+                        }
+
+                        WaitForLock(lock_transfer);
+                        break;
+
                     case "write_ledger":
                         WriteLedgerToFile((String) command.getArguments().get(0));
                         break;
+                    
+                    case "write_output":
+                        WriteOutputToFile((String) command.getArguments().get(0));
+                        break;
+                    
                     default:
                         System.out.println("Unknown command: " + command.getCommand());
                         break;
@@ -397,5 +450,50 @@ public class ClientState {
 
         writer.close();
     }
+
+    // Writes all the saved outputs into the desired file
+    private void WriteOutputToFile(String outputFilePath) throws IOException {
+
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
+
+        for (String output : allOutputs){
+            String outputString = String.join("", output);
+            writer.write(outputString);
+        }
+
+        writer.close();
+    }
+
+    private static void WaitForLock(Object lock){
+        // Start a separate thread for the timer
+        Thread timerThread = new Thread(() -> {
+            try {
+                // Sleep for the desired duration
+                Thread.sleep(MAX_TIME_WAIT * 1000);
+                synchronized (lock) {
+                    // Interrupt the waiting thread after the timeout
+                    System.out.println("Timeout: Could not get response in time.");
+                    lock.notify(); // Notify the waiting thread
+                    
+                }
+            } catch (InterruptedException e) {
+                // Timer thread interrupted, which means the waiting thread was notified before the timeout
+            }
+        });
+        timerThread.start();
+    
+        synchronized (lock) {
+            try {
+                lock.wait(); // Wait for the response or timeout
+            } catch (InterruptedException e) {
+                System.out.println("Waiting thread interrupted");
+            } finally {
+                // Regardless of whether the waiting thread was interrupted or not,
+                // interrupt the timer thread to stop it
+                timerThread.interrupt();
+            }
+        }
+    }
+
 
 }

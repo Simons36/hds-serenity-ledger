@@ -1,0 +1,65 @@
+[
+    {
+        "command" : "transfer",
+        "arguments" : [
+            "client2",
+            100
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            2
+        ]
+    },
+
+    {
+        "command" : "transfer",
+        "arguments" : [
+            "client2",
+            50
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            2
+        ]
+    },
+
+    {
+        "command" : "transfer",
+        "arguments" : [
+            "client2",
+            200
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            2
+        ]
+    },
+
+    {
+        "command" : "check_balance"
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            5
+        ]
+    },
+
+    {
+        "command" : "write_output",
+        "arguments" : [
+            "../Test/src/test/java/output/multiple_transfer_test_output.txt"
+        ]
+    }
+
+]

@@ -1,0 +1,35 @@
+[
+    {
+        "command" : "transfer",
+        "arguments" : [
+            "client2",
+            100
+        ]
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            2
+        ]
+    },
+
+    {
+        "command" : "check_balance"
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            5
+        ]
+    },
+
+    {
+        "command" : "write_output",
+        "arguments" : [
+            "../Test/src/test/java/output/transfer_test_output.txt"
+        ]
+    }
+
+]

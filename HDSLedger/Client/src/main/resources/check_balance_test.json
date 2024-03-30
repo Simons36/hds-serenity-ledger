@@ -1,0 +1,21 @@
+[
+    {
+        "command" : "check_balance"
+    },
+
+    {
+        "command" : "sleep",
+        "arguments" : [
+            5
+        ]
+    },
+
+    {
+        "command" : "write_output",
+        "arguments" : [
+            "../Test/src/test/java/output/check_balance_test_output.txt"
+        ]
+    }
+
+
+]
