@@ -2,16 +2,14 @@ package pt.ulisboa.tecnico.hdsledger.client.cli;
 
 import java.util.Scanner;
 
-import javax.management.monitor.Monitor;
-
 import pt.ulisboa.tecnico.hdsledger.client.enums.CommandType;
 import pt.ulisboa.tecnico.hdsledger.client.exceptions.ClientIdDoesntExistException;
 import pt.ulisboa.tecnico.hdsledger.client.service.ClientState;
 
-import static pt.ulisboa.tecnico.hdsledger.client.enums.CommandType.HELP;
-
 
 public class CommandLineInterface {
+
+    private static final int MAX_TIME_WAIT = 5; // 10 seconds
 
     public static void ParseInput(ClientState clientState) {
         System.out.println("Starting command line interface...");
@@ -45,27 +43,23 @@ public class CommandLineInterface {
                     case CHECK_BALANCE:
                         Object lock = new Object();
                         clientState.SendCheckBalanceMessage(lock);
-                        synchronized (lock) {
-                            try {
-                                lock.wait();
-                            } catch (Exception e) {
-                                System.out.println("Error with lock");
-                                break;
-                            }
-                        }
+                    
+                        WaitForLock(lock);
                         break;
 
                     case TRANSFER:
                         System.out.println();
                         System.out.println("Please provide the client ID of the receiver:");
                         String receiver = scanner.nextLine().trim();
+
+                        Object lockTransfer = new Object();
                         for(;;){
                             System.out.println("Please provide the amount of coins to transfer:");
                             String amount = scanner.nextLine().trim();
                             try {
                                 double amountDouble = Double.parseDouble(amount);
                                 if(amountDouble > 0){
-                                    clientState.SendTransferMessage(receiver, amountDouble);
+                                    clientState.SendTransferMessage(receiver, amountDouble, lockTransfer);
                                     break;
                                 }else{
                                     System.out.println("Amount must be a positive integer.");
@@ -77,6 +71,8 @@ public class CommandLineInterface {
                                 break;
                             }
                         }
+
+                        WaitForLock(lockTransfer);
                         break;
 
                     case EXIT:
@@ -97,5 +93,36 @@ public class CommandLineInterface {
         System.exit(0);
         
 
+    }
+
+    private static void WaitForLock(Object lock){
+        // Start a separate thread for the timer
+        Thread timerThread = new Thread(() -> {
+            try {
+                // Sleep for the desired duration
+                Thread.sleep(MAX_TIME_WAIT * 1000);
+                synchronized (lock) {
+                    // Interrupt the waiting thread after the timeout
+                    System.out.println("Timeout: Could not get response in time.");
+                    lock.notify(); // Notify the waiting thread
+                    
+                }
+            } catch (InterruptedException e) {
+                // Timer thread interrupted, which means the waiting thread was notified before the timeout
+            }
+        });
+        timerThread.start();
+    
+        synchronized (lock) {
+            try {
+                lock.wait(); // Wait for the response or timeout
+            } catch (InterruptedException e) {
+                System.out.println("Waiting thread interrupted");
+            } finally {
+                // Regardless of whether the waiting thread was interrupted or not,
+                // interrupt the timer thread to stop it
+                timerThread.interrupt();
+            }
+        }
     }
 }

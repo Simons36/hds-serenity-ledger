@@ -13,7 +13,6 @@ import java.text.MessageFormat;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.ObjectInputFilter.Config;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -64,14 +63,18 @@ public class ClientState {
     private Map<Integer, List<ConsensusMessage>> receivedLedgerUpdates = new HashMap<>();
     // Bucket to store check balance responses
     private final ClientMessageBucket checkBalanceResponseMessageBucket;
+    // Bucket to store transfer responses
+    private final ClientMessageBucket transferResponseMessageBucket;
     // Number of check balance messages sent
-    private int sentCheckBalance = 0;
+    private long sentCheckBalance = 0;
     // List with check balance request IDs that have already finished
-    private List<Integer> finishedCheckBalanceRequests = new ArrayList<>();
+    private List<Long> finishedCheckBalanceRequests = new ArrayList<>();
     // Lock for commandLineInterface (used for displaying information in the command line in the correct order)
     private Object lock;
-    // Message counter for nonce generation
+    // Message counter for nonce generation and for identifying transfer messages
     private long transferMessageCounter = 0;
+    // List with transfer request IDs that have already finished
+    private List<Long> finishedTransferRequests = new ArrayList<>();
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -134,6 +137,7 @@ public class ClientState {
 
         
         this.checkBalanceResponseMessageBucket = new ClientMessageBucket(nodeCount);
+        this.transferResponseMessageBucket = new ClientMessageBucket(nodeCount);
 
     }
 
@@ -188,8 +192,10 @@ public class ClientState {
         }
     }
 
-    public void SendTransferMessage(String receiverId, double amount) throws ClientIdDoesntExistException{
-        System.out.println("Transfering " + amount + " coins to " + receiverId);
+    public void SendTransferMessage(String receiverId, double amount, Object lock) throws ClientIdDoesntExistException{
+        this.lock = lock;
+
+        System.out.println("Transfering " + amount + " coins to " + receiverId + "...");
 
         // Find clientId in clientConfig and get publicKey
         // If not found, throw ClientIdDoesntExistException
@@ -201,7 +207,7 @@ public class ClientState {
 
         try {
             ConsensusMessage transferMessage = new ConsensusMessageBuilder(clientId, Message.Type.TRANSFER)
-                    .setMessage(new TransferMessage(transaction).toJson())
+                    .setMessage(new TransferMessage(transaction, ++this.transferMessageCounter).toJson())
                     .build();
 
             clientService.broadcast(transferMessage);
@@ -286,7 +292,7 @@ public class ClientState {
 
         this.checkBalanceResponseMessageBucket.addMessage(consensusMessage);
 
-        int replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
+        long replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
 
         Optional<Double> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
@@ -299,6 +305,27 @@ public class ClientState {
             lock = null;
         }
 
+    }
+
+    protected void uponTransferResponse(ConsensusMessage consensusMessage) {
+        this.transferResponseMessageBucket.addMessage(consensusMessage);
+
+        long replyToTransferRequestId = consensusMessage.deserializeTransferResponseMessage().getResponseToMessageId();
+
+        Optional<Boolean> success = this.transferResponseMessageBucket.hasValidTransferResponseQuorum(replyToTransferRequestId);
+
+        if(success.isPresent() && !finishedTransferRequests.contains(replyToTransferRequestId)){
+            if(success.get()){
+                System.out.println("Server replied with success.");
+            }else{
+                System.out.println("Server replied with the following error: " + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
+            }
+            finishedTransferRequests.add(replyToTransferRequestId);
+            synchronized(lock){
+                lock.notify();
+            }
+            lock = null;
+        }
     }
 
     public void ExecuteCommands(String commandsFilePath) throws IOException {

@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.logging.Level;
 
 import pt.ulisboa.tecnico.hdsledger.communication.AppendMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
@@ -112,15 +111,18 @@ public class ClientService implements UDPService {
 
                                 case CHECK_BALANCE_RESPONSE:
                                     if(verboseMode)
-                                    System.out.println(MessageFormat.format("{0} - Received CHECK_BALANCE_RESPONSE message from {1}",
-                                    this.selfConfig.getId(), message.getSenderId()));
+                                        System.out.println(MessageFormat.format("{0} - Received CHECK_BALANCE_RESPONSE message from {1}",
+                                                this.selfConfig.getId(), message.getSenderId()));
 
                                     this.clientState.uponCheckBalanceResponse((ConsensusMessage) message);
                                     break;
 
-                                case ERROR:
-                                    ClientErrorMessage errorMessage = (ClientErrorMessage) message;
-                                    System.out.println("Error: " + errorMessage.getErrorMessage());
+                                case TRANSFER_RESPONSE:
+                                    if(verboseMode)
+                                        System.out.println(MessageFormat.format("{0} - Received TRANSFER_RESPONSE message from {1}",
+                                                this.selfConfig.getId(), message.getSenderId()));
+
+                                    this.clientState.uponTransferResponse((ConsensusMessage) message);
                                     break;
 
                                 case IGNORE:

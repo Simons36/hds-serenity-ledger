@@ -343,11 +343,7 @@ public class Link {
 
         // It's not an ACK -> Deserialize for the correct type
         if ((!local && !message.getType().equals(Message.Type.IGNORE))) {
-            if(!message.getType().equals(Message.Type.ERROR)){
-                message = new Gson().fromJson(messageJson, this.messageClass);
-            }else{
-                message = new Gson().fromJson(messageJson, ClientErrorMessage.class);
-            }
+            message = new Gson().fromJson(messageJson, this.messageClass);
 
         }
 

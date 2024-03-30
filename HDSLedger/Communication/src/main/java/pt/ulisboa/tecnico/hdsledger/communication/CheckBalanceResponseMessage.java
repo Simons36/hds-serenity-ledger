@@ -6,9 +6,9 @@ public class CheckBalanceResponseMessage {
     
     private final String balance;
 
-    private final int responseToCheckBalanceRequestId;
+    private final long responseToCheckBalanceRequestId;
 
-    public CheckBalanceResponseMessage(String balance, int responseToCheckBalanceRequestId) {
+    public CheckBalanceResponseMessage(String balance, long responseToCheckBalanceRequestId) {
         this.balance = balance;
         this.responseToCheckBalanceRequestId = responseToCheckBalanceRequestId;
     }
@@ -17,7 +17,7 @@ public class CheckBalanceResponseMessage {
         return balance;
     }
 
-    public int getResponseToCheckBalanceRequestId() {
+    public long getResponseToCheckBalanceRequestId() {
         return responseToCheckBalanceRequestId;
     }
 

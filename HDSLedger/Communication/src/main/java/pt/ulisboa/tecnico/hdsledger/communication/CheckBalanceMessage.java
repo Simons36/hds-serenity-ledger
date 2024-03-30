@@ -15,9 +15,9 @@ public class CheckBalanceMessage {
 
     private final String publicKeyBase64;
 
-    private final int checkBalanceRequestId;
+    private final long checkBalanceRequestId;
 
-    public CheckBalanceMessage(PublicKey publicKey, int checkBalanceRequestId) {
+    public CheckBalanceMessage(PublicKey publicKey, long checkBalanceRequestId) {
         this.publicKeyBase64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
         this.checkBalanceRequestId = checkBalanceRequestId;
     }
@@ -30,7 +30,7 @@ public class CheckBalanceMessage {
         }
     }
 
-    public int getCheckRequestBalanceId(){
+    public long getCheckRequestBalanceId(){
         return this.checkBalanceRequestId;
     }
 
