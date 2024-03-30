@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.service.models.builder;
 
+import java.security.PrivateKey;
+
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
 import pt.ulisboa.tecnico.hdsledger.service.models.exceptions.BlockIsFullException;
@@ -29,12 +31,14 @@ public class BlockBuilder {
         }
     }
 
-    public Block build(String leader) throws BlockNotYetFullException{
+    public Block build(String leader, PrivateKey privateKey) throws BlockNotYetFullException{
         if(!instance.isFull())
             throw new BlockNotYetFullException();
 
         instance.setNodeIdOfFeeReceiver(leader);
-        
+        instance.setHash(instance.generateHash());
+        instance.signBlock(privateKey);
+
         return instance;
     }
 
