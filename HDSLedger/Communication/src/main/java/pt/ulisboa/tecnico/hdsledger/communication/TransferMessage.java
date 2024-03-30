@@ -8,12 +8,19 @@ public class TransferMessage {
 
     private Transaction transaction;
 
-    public TransferMessage(Transaction transaction) {
+    private long transferMessageId;
+
+    public TransferMessage(Transaction transaction, long transferMessageId) {
         this.transaction = transaction;
+        this.transferMessageId = transferMessageId;
     }
 
     public Transaction getTransaction() {
         return transaction;
+    }
+
+    public long getTransferMessageId() {
+        return transferMessageId;
     }
 
     //to json

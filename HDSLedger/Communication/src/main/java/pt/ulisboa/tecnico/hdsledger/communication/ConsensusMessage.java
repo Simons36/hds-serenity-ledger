@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 public class ConsensusMessage extends Message {
 
@@ -53,6 +54,11 @@ public class ConsensusMessage extends Message {
 
     public TransferMessage deserializeTransferMessage() {
         return new Gson().fromJson(this.message, TransferMessage.class);
+    }
+
+    // Deserialize TransferResponseMessage using custom TypeAdapter
+    public TransferResponseMessage deserializeTransferResponseMessage() {
+        return new Gson().fromJson(this.message, TransferResponseMessage.class);
     }
 
     public String getMessage() {

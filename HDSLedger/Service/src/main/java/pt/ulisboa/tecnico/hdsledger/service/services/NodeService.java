@@ -5,7 +5,6 @@ import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +15,9 @@ import java.util.logging.Level;
 
 import com.google.gson.Gson;
 
+import pt.ulisboa.tecnico.hdsledger.common.models.ErrorType;
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.CheckBalanceResponseMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.ClientErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
@@ -28,8 +26,6 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
-import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
-import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoLibrary;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
@@ -93,7 +89,8 @@ public class NodeService implements UDPService {
     private ArrayList<Block> ledger = new ArrayList<Block>();
 
     public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs, ServiceConfig serviceConfig) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs,
+            ServiceConfig serviceConfig) {
 
         this.link = link;
         this.config = config;
@@ -104,7 +101,7 @@ public class NodeService implements UDPService {
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
         this.serviceConfig = serviceConfig;
-        
+
         InitializeAccounts(clientsConfigs);
 
         // Start initialization of block to be built
@@ -119,7 +116,7 @@ public class NodeService implements UDPService {
         return this.consensusInstance.get();
     }
 
-    public void addClientService(ClientService clientService){
+    public void addClientService(ClientService clientService) {
         this.clientService = clientService;
     }
 
@@ -153,20 +150,21 @@ public class NodeService implements UDPService {
         this.link.broadcast(consensusMessage);
     }
 
-
     private void InitializeAccounts(ProcessConfig[] clientsConfigs) {
 
         // First we create the accounts for the clients
         Arrays.stream(clientsConfigs)
                 .forEach(clientConfig -> {
                     try {
-                        CreateAccount(clientConfig.getId(), this.serviceConfig.getInitialAccountBalance(), "../" + clientConfig.getPublicKeyPath());
+                        CreateAccount(clientConfig.getId(), this.serviceConfig.getInitialAccountBalance(),
+                                "../" + clientConfig.getPublicKeyPath());
                     } catch (HDSSException e) {
                         throw e;
                     }
                 });
 
-        // Now we create accounts for each of the nodes (this will be used for transaction's fees)
+        // Now we create accounts for each of the nodes (this will be used for
+        // transaction's fees)
 
         Arrays.stream(this.nodesConfig)
                 .forEach(nodeConfig -> {
@@ -178,7 +176,6 @@ public class NodeService implements UDPService {
                 });
 
     }
-    
 
     public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
@@ -223,20 +220,20 @@ public class NodeService implements UDPService {
         }
 
         InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
-        
+
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Starting timer for Consensus Instance {1}, Round {2}",
-            config.getId(), consensusInstance, 1));
-            
+                    config.getId(), consensusInstance, 1));
+
             // Start timer
-            
+
             LOGGER.log(Level.INFO,
-            MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+                    MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
             this.link.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
-            MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+                    MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
         }
 
         // Start timer
@@ -269,7 +266,7 @@ public class NodeService implements UDPService {
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
-                        
+
         // Verify if pre-prepare was sent by leader
         if (!isLeader(senderId, consensusInstance))
             return;
@@ -277,7 +274,6 @@ public class NodeService implements UDPService {
         // verify if the message is justified
         if (!JustifyPrePrepare(message))
             return;
-
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -433,7 +429,6 @@ public class NodeService implements UDPService {
         Optional<String> commitValue = commitMessages.hasValidCommitQuorum(config.getId(),
                 consensusInstance, round);
 
-        
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
             // we can now stop the timer for this instance and round
@@ -451,8 +446,6 @@ public class NodeService implements UDPService {
             // Append block to ledger
             this.HandleBlockAppend(block);
 
-            
-
             lastDecidedConsensusInstance.getAndIncrement();
 
             LOGGER.log(Level.INFO,
@@ -462,44 +455,43 @@ public class NodeService implements UDPService {
         }
     }
 
-    //TODO: Remove senderPublicKeyPath
-    public synchronized double uponCheckBalance(ConsensusMessage message) throws HDSSException{
+    // TODO: Remove senderPublicKeyPath
+    public synchronized double uponCheckBalance(ConsensusMessage message) throws HDSSException {
 
         String clientId = message.getSenderId();
 
         CheckBalanceMessage checkBalanceMessage = message.deserializeCheckBalanceMessage();
 
         // get public key path of the sender
-        if(!this.accountsInfo.containsKey(clientId)){
+        if (!this.accountsInfo.containsKey(clientId)) {
             LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not find account for sender {1}",
                     this.config.getId(), clientId));
             throw new HDSSException(ErrorMessage.AccountNotFound);
         }
 
         String senderPublicKeyPath = this.accountsInfo.get(clientId).getPublicKeyFilename();
-        
+
         try {
-            if(!CryptoUtil.verifyPublicKey(senderPublicKeyPath, checkBalanceMessage.getPublicKey())){
+            if (!CryptoUtil.verifyPublicKey(senderPublicKeyPath, checkBalanceMessage.getPublicKey())) {
                 LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not verify public key for sender {1}",
                         this.config.getId(), clientId));
                 throw new HDSSException(ErrorMessage.InvalidPublicKey);
             }
-            
+
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Could not verify public key for sender {1}",
-            this.config.getId(), clientId));
+                    this.config.getId(), clientId));
             throw new HDSSException(ErrorMessage.InvalidPublicKey);
         }
-        
-        //get balance
+
+        // get balance
         synchronized (accountsInfo) {
             AccountInfo account = accountsInfo.get(clientId);
-            
+
             return account.getBalance();
 
         }
-        
-        
+
     }
 
     public synchronized void uponRoundChange(ConsensusMessage message) {
@@ -579,7 +571,7 @@ public class NodeService implements UDPService {
             // Broadcast PRE-PREPARE message
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Starting timer for Consensus Instance {1}, Round {2}",
                     config.getId(), consensusInstance, instance.getCurrentRound()));
-            
+
             // build pre-prepare message
             PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
 
@@ -596,37 +588,41 @@ public class NodeService implements UDPService {
         // -------------------
     }
 
-    public void uponTransfer(Transaction transaction, String senderId, String receiverId, int messageId) {
+    public void uponTransfer(Transaction transaction, String senderId, String receiverId, long messageId) {
         System.out.println(transaction);
 
         synchronized (currentBlock) {
-            // Check if senderID account has enough balance according to transactions already present in this block
-            // (that is, we need to take accountsInfo, create a temporary accountInfo with the transactions present in
-            // the current block applied, and check if the sender has enough balance to make the transaction)
+            // Check if senderID account has enough balance according to transactions
+            // already present in this block
+            // (that is, we need to take accountsInfo, create a temporary accountInfo with
+            // the transactions present in
+            // the current block applied, and check if the sender has enough balance to make
+            // the transaction)
 
-            AccountInfo tempAccountOfSender = new AccountInfo(this.accountsInfo.get(senderId).getAssociatedClientId(), 
-                                                              this.accountsInfo.get(senderId).getBalance(), 
-                                                              this.accountsInfo.get(senderId).getPublicKeyFilename());
+            AccountInfo tempAccountOfSender = new AccountInfo(this.accountsInfo.get(senderId).getAssociatedClientId(),
+                    this.accountsInfo.get(senderId).getBalance(),
+                    this.accountsInfo.get(senderId).getPublicKeyFilename());
 
             double balanceIfCurrentBlockWasApplied = 0;
             try {
                 balanceIfCurrentBlockWasApplied = ApplyChangesToAccountOfCurrentBlock(tempAccountOfSender);
             } catch (Exception e) {
                 e.printStackTrace();
-                this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
-                return;
-            }
-            
-
-            if(balanceIfCurrentBlockWasApplied < transaction.getAmount()){
-                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Sender {1} does not have enough balance to transfer {2} to {3}",
-                        this.config.getId(), senderId, transaction.getAmount(), receiverId));
-                
-                this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.INSUFFICIENT_BALANCE);
+                this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.UNKNOWN_ERROR);
                 return;
             }
 
-            // All the checks passed; we now need to add the transaction to the current block
+            if (balanceIfCurrentBlockWasApplied < transaction.getAmount()) {
+                LOGGER.log(Level.SEVERE,
+                        MessageFormat.format("{0} - Sender {1} does not have enough balance to transfer {2} to {3}",
+                                this.config.getId(), senderId, transaction.getAmount(), receiverId));
+
+                this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.INSUFFICIENT_BALANCE);
+                return;
+            }
+
+            // All the checks passed; we now need to add the transaction to the current
+            // block
             // Last thing, set fee
 
             transaction.setFee(this.serviceConfig.getTransactionFee());
@@ -636,38 +632,46 @@ public class NodeService implements UDPService {
 
             try {
 
-                    boolean isFull = currentBlock.addTransactionAndCheckIfFull(transaction);
-                    System.out.println(currentBlock);
+                boolean isFull = currentBlock.addTransactionAndCheckIfFull(transaction);
+                System.out.println(currentBlock);
 
-                    if(isFull){
-                        // Block is full, we can start consensus on this block
-                        Block newBlock = currentBlock.build(this.config.getId());
-                        this.startConsensus(newBlock.toJson());
-                        
-                        // Reset current block
-                        ResetCurrentBlockBuilder();
-                    }
+                if (isFull) {
+                    // Block is full, we can start consensus on this block
+                    Block newBlock = currentBlock.build(this.config.getId());
                     
-                } catch (BlockIsFullException e) {
-                    // TODO: handle exception
-                } catch (Exception e) {
-                    this.clientService.SendErrorMessage(senderId, messageId, ClientErrorMessage.ErrorType.UNKNOWN_ERROR);
+                    //Start consensus on a new thread
+                    new Thread(() -> {
+                        this.startConsensus(newBlock.toJson());
+                    }).start();
+
+                    // Reset current block
+                    ResetCurrentBlockBuilder();
                 }
-            
+
+            } catch (BlockIsFullException e) {
+                // TODO: handle exception
+            } catch (Exception e) {
+                this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.UNKNOWN_ERROR);
+            }
+
+            // Send success message to client
+            this.clientService.SendTransferSuccessMessage(senderId, messageId);
+
         }
     }
 
     /**
-     * This function should be called whenever an agreement about which block to be appended is reached (DECIDE part of the iBFT protocol).
+     * This function should be called whenever an agreement about which block to be
+     * appended is reached (DECIDE part of the iBFT protocol).
      */
-    private void HandleBlockAppend(Block block){
+    private void HandleBlockAppend(Block block) {
 
-        synchronized(ledger){
+        synchronized (ledger) {
             // first we need to process the transactions in the block
-            for(Transaction transaction : block.getTransactions()){
+            for (Transaction transaction : block.getTransactions()) {
                 try {
                     ProcessTransaction(transaction);
-                    
+
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -681,16 +685,19 @@ public class NodeService implements UDPService {
         }
 
         LOGGER.log(Level.INFO, MessageFormat.format("{0} - Block appended to ledger: {1}",
-                    this.config.getId(), block));
+                this.config.getId(), block));
 
     }
 
     /**
-     * This function will apply all transactions in the current block to the accountInfo, and return <b> the new "would be" balance. </b>
+     * This function will apply all transactions in the current block to the
+     * accountInfo, and return <b> the new "would be" balance. </b>
+     * 
      * @param accountInfo
-     * @return The new balance of the account if all transactions in the current block were applied to the accountInfo
+     * @return The new balance of the account if all transactions in the current
+     *         block were applied to the accountInfo
      */
-    private double ApplyChangesToAccountOfCurrentBlock(AccountInfo accountInfo) throws Exception{
+    private double ApplyChangesToAccountOfCurrentBlock(AccountInfo accountInfo) throws Exception {
         // Apply all transactions in the current block to the accountInfo
 
         Block currentBlockInstance = this.currentBlock.getInstance();
@@ -699,25 +706,25 @@ public class NodeService implements UDPService {
 
         try {
 
-            for(Transaction transaction : currentBlockInstance.getTransactions()){
+            for (Transaction transaction : currentBlockInstance.getTransactions()) {
 
-                if(transaction != null){
+                if (transaction != null) {
 
-                    if(CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getSenderPublicKey())){ // this means that the sender of this transaction
-                                                                                                       // was the account holder
+                    if (CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getSenderPublicKey())) { // this means that the sender of
+                                                                                                         // the transaction was the account holder
                         balanceOfAccount -= transaction.getAmount();
-        
+
                     }
-    
-                    if(CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getReceiverPublicKey())){ // this means that the receiver of this transaction
-                                                                                                         // was the account holder
+
+                    if (CryptoUtil.verifyPublicKey(pathToPublicKey, transaction.getReceiverPublicKey())) { // this means that the receiver of this
+                                                                                                           // transaction was the account holder
                         balanceOfAccount += (transaction.getAmount() - transaction.getFee());
                     }
 
                 }
 
             }
-            
+
         } catch (Exception e) {
             throw e;
         }
@@ -726,56 +733,55 @@ public class NodeService implements UDPService {
 
     }
 
-    private void ProcessTransaction(Transaction transaction) throws Exception{
+    private void ProcessTransaction(Transaction transaction) throws Exception {
 
-        synchronized(accountsInfo){
+        synchronized (accountsInfo) {
 
-            
             PublicKey publicKeyOfSender;
             PublicKey publicKeyOfReceiver;
 
             try {
                 publicKeyOfSender = transaction.getSenderPublicKey();
                 publicKeyOfReceiver = transaction.getReceiverPublicKey();
-                
+
             } catch (Exception e) {
-            throw e;
+                throw e;
             }
 
             // Get sender ID
             String senderId = accountsInfo.entrySet().stream()
-                .filter(entry -> {
-                    return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfSender);
-                })
-                .map(Map.Entry::getKey) // Extract the key if a matching value is found
-                .findFirst() // Get the first matching key, if any
-                .orElse(null); // Return null if no matching key is found
+                    .filter(entry -> {
+                        return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfSender);
+                    })
+                    .map(Map.Entry::getKey) // Extract the key if a matching value is found
+                    .findFirst() // Get the first matching key, if any
+                    .orElse(null); // Return null if no matching key is found
 
             // Get receiver ID
             String receiverId = accountsInfo.entrySet().stream()
-                .filter(entry -> {
-                    return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfReceiver);
-                })
-                .map(Map.Entry::getKey) // Extract the key if a matching value is found
-                .findFirst() // Get the first matching key, if any
-                .orElse(null); // Return null if no matching key is found
-                
-            if(senderId == null || receiverId == null){
-                //TODO: idk
+                    .filter(entry -> {
+                        return CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKeyOfReceiver);
+                    })
+                    .map(Map.Entry::getKey) // Extract the key if a matching value is found
+                    .findFirst() // Get the first matching key, if any
+                    .orElse(null); // Return null if no matching key is found
+
+            if (senderId == null || receiverId == null) {
+                // TODO: idk
             }
-            
-            //TODO: implement fee
+
+            // TODO: implement fee
             accountsInfo.get(senderId).decreaseBalance(transaction.getAmount());
             accountsInfo.get(receiverId).increaseBalance(transaction.getAmount() - transaction.getFee());
-                
+
         }
 
     }
 
-    private void ProcessFeePayment(Block block){
+    private void ProcessFeePayment(Block block) {
         double totalFees = 0;
 
-        for(Transaction transaction : block.getTransactions()){
+        for (Transaction transaction : block.getTransactions()) {
             totalFees += transaction.getFee();
         }
 
@@ -892,18 +898,17 @@ public class NodeService implements UDPService {
 
     }
 
-
-    private void CreateAccount(String clientId, int initialBalance, String clientPublicKeyPath){
+    private void CreateAccount(String clientId, int initialBalance, String clientPublicKeyPath) {
 
         // If account already exists throw error
-        if(this.accountsInfo.containsKey(clientId)){
+        if (this.accountsInfo.containsKey(clientId)) {
             throw new HDSSException(ErrorMessage.DuplicateClientInConfig);
         }
 
         this.accountsInfo.put(clientId, new AccountInfo(clientId, initialBalance, clientPublicKeyPath));
     }
 
-    private void ResetCurrentBlockBuilder(){
+    private void ResetCurrentBlockBuilder() {
         this.currentBlock = new BlockBuilder(ledger.size(), serviceConfig.getNumTransactionsInBlock());
     }
 
@@ -941,7 +946,6 @@ public class NodeService implements UDPService {
 
                                 case ROUND_CHANGE ->
                                     uponRoundChange((ConsensusMessage) message);
-                                    
 
                                 default ->
                                     LOGGER.log(Level.INFO,
