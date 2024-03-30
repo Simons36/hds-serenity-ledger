@@ -8,6 +8,7 @@ public enum ErrorType {
     INVALID_TRANSACTION_ID("Provided transaction ID is invalid"),
     INVALID_NONCE("The sent nonce has already been used"),
     INSUFFICIENT_BALANCE("The sender does not have enough funds to make the transaction"),
+    NONCE_ALREADY_USED("The provided nonce has already been used"),
     UNKNOWN_ERROR("Unknown error");
 
     private String message;
