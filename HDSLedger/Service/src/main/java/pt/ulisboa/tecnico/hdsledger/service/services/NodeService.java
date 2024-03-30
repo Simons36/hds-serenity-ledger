@@ -291,6 +291,10 @@ public class NodeService implements UDPService {
                 MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
+                        
+        if(!VerifyBlockInPrePrepare(new Gson().fromJson(value, Block.class))){
+            return;
+        }
 
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
@@ -303,11 +307,8 @@ public class NodeService implements UDPService {
         if (!JustifyPrePrepare(message))
             return;
 
-        // Lastly, we do all verifications that correspond to the block information (signatures of transactions, block hash, etc)
+        // Do all verifications that correspond to the block information (signatures of transactions, block hash, etc)
 
-        if(!VerifyBlockInPrePrepare(new Gson().fromJson(value, Block.class))){
-            return;
-        }
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -364,6 +365,10 @@ public class NodeService implements UDPService {
                 MessageFormat.format(
                         "{0} - Received PREPARE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
+
+        if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
+            return;
+        }
 
         // Doesn't add duplicate messages
         prepareMessages.addMessage(message);
@@ -433,9 +438,17 @@ public class NodeService implements UDPService {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
 
+        CommitMessage commitMessage = message.deserializeCommitMessage();
+        String value = commitMessage.getValue();
+
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
+
+        // Before adding the message to the bucket, we need to check if the block in the message is valid
+        if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
+            return;
+        }
 
         commitMessages.addMessage(message);
 
@@ -1081,7 +1094,7 @@ public class NodeService implements UDPService {
         if(!VerifyBlockSignature(block, getPublicKeyCorrespondingToClientId(block.getNodeIdOfFeeReceiver()))){
             return false;
         }
-        
+
         return true;
 
     }
