@@ -27,6 +27,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
 import pt.ulisboa.tecnico.hdsledger.service.models.AccountInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.Block;
@@ -41,6 +42,8 @@ import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ServiceConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.Util;
+
+import java.security.PrivateKey;
 
 public class NodeService implements UDPService {
 
@@ -113,6 +116,16 @@ public class NodeService implements UDPService {
         ResetCurrentBlockBuilder();
 
         InitializeNonceArray(clientsConfigs);
+    }
+
+    private PrivateKey getPrivateKey() {
+        try {
+            return CryptoIO.readPrivateKey("../" + this.config.getPrivateKeyPath());
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public ProcessConfig getConfig() {
@@ -671,7 +684,7 @@ public class NodeService implements UDPService {
 
                 if (isFull) {
                     // Block is full, we can start consensus on this block
-                    Block newBlock = currentBlock.build(this.config.getId());
+                    Block newBlock = currentBlock.build(this.config.getId(), this.getPrivateKey());
                     
                     //Start consensus on a new thread
                     new Thread(() -> {
@@ -685,6 +698,7 @@ public class NodeService implements UDPService {
             } catch (BlockIsFullException e) {
                 // TODO: handle exception
             } catch (Exception e) {
+                e.printStackTrace();
                 this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.UNKNOWN_ERROR);
             }
 
@@ -952,16 +966,10 @@ public class NodeService implements UDPService {
 
                 //first verify if transactionId = hash(sender_public_key + receiver_public_key + amount + nonce)
 
-                byte[] transactionToCompare = Transaction.CreateTransactionId(transaction.getSenderPublicKey(),
-                                                                            transaction.getReceiverPublicKey(), 
-                                                                            transaction.getAmount(),
-                                                                            transaction.getNonceInBase64());
-
-                if(!Arrays.equals(transactionToCompare, transaction.getRawTransactionId())){
-
+                if(!VerifyTransactionHash(transaction)){
                     LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid transactionId",
-                        this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
-
+                            this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
+    
                     return false;
                 }
 
@@ -989,7 +997,7 @@ public class NodeService implements UDPService {
                 }
 
                 // Now verify signature
-                if (!CryptoUtil.verifySignature(transaction.getRawTransactionId(), transaction.getSignature(), transaction.getSenderPublicKey())) {
+                if (!VerifyTransactionSignature(transaction)) {
                     LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid signature",
                         this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
                     return false;
@@ -1019,13 +1027,107 @@ public class NodeService implements UDPService {
                 return false;
             }
                 
-            
+            // Lastly, verify block hash and signature
+
+            if(!VerifyBlockHash(block)){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because it has an invalid hash",
+                        this.config.getId(), Util.bytesToHex(block.getHash())));
+                return false;
+            }
+
+            if(!VerifyBlockSignature(block, getPublicKeyCorrespondingToClientId(block.getNodeIdOfFeeReceiver()))){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because it has an invalid signature",
+                        this.config.getId(), Util.bytesToHex(block.getHash())));
+                return false;
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
 
         return true;
+    }
+
+    private boolean VerifyBlockInPrepareAndCommit(Block block){
+        // In prepare and commit, we do not need to make all verifications
+        // We only need to:
+        //  - For each transaction:
+        //      - Verify hash
+        //      - Verify signature
+        //  - For the block:
+        //      - Verify hash
+        //      - Verify signature
+
+        for(Transaction transaction : block.getTransactions()){
+            try {
+                if(!VerifyTransactionHash(transaction)){
+                    return false;
+                }
+
+                if(!VerifyTransactionSignature(transaction)){
+                    return false;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        if(!VerifyBlockHash(block)){
+            return false;
+        }
+
+        if(!VerifyBlockSignature(block, getPublicKeyCorrespondingToClientId(block.getNodeIdOfFeeReceiver()))){
+            return false;
+        }
+        
+        return true;
+
+    }
+
+    private boolean VerifyBlockHash(Block block){
+        try {
+            byte[] blockHash = block.getHash();
+            byte[] calculatedBlockHash = block.generateHash();
+
+            return Arrays.equals(blockHash, calculatedBlockHash);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean VerifyBlockSignature(Block block, PublicKey publicKeyOfSigner){
+        try {
+            return CryptoUtil.verifySignature(block.getHash(), block.getSignature(), publicKeyOfSigner);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean VerifyTransactionHash(Transaction transaction) throws Exception{
+        try {
+
+            byte[] transactionToCompare = Transaction.CreateTransactionId(transaction.getSenderPublicKey(),
+                                                                                transaction.getReceiverPublicKey(), 
+                                                                                transaction.getAmount(),
+                                                                                transaction.getNonceInBase64());
+    
+            return Arrays.equals(transactionToCompare, transaction.getRawTransactionId());
+            
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    private boolean VerifyTransactionSignature(Transaction transaction) throws Exception{
+        try {
+            return CryptoUtil.verifySignature(transaction.getRawTransactionId(), transaction.getSignature(), transaction.getSenderPublicKey());
+        } catch (Exception e) {
+            throw e;
+        }
     }
 
     private void CreateAccount(String clientId, int initialBalance, String clientPublicKeyPath) {
@@ -1048,6 +1150,15 @@ public class NodeService implements UDPService {
                 .map(Map.Entry::getKey) // Extract the key if a matching value is found
                 .findFirst() // Get the first matching key, if any
                 .orElse(null); // Return null if no matching key is found
+    }
+
+    private PublicKey getPublicKeyCorrespondingToClientId(String clientId) {
+        try {
+            return CryptoIO.readPublicKey(this.accountsInfo.get(clientId).getPublicKeyFilename());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override

@@ -1,6 +1,8 @@
 package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.security.PrivateKey;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -22,6 +24,8 @@ public class Block implements Serializable {
     private double totalFees;
 
     private String nodeIdOfFeeReceiver;
+
+    private byte[] signature; // Corresponds to signature of the hash of the block
 
     // private final Block previousBlock;
 
@@ -66,6 +70,23 @@ public class Block implements Serializable {
         return nodeIdOfFeeReceiver;
     }
 
+    public void setHash(byte[] hash) {
+        this.hash = hash;
+    }
+
+    public void signBlock(PrivateKey privateKey) {
+        try {
+            this.signature = CryptoUtil.sign(hash, privateKey);
+        
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public byte[] getSignature() {
+        return signature;
+    }
+
     /**
      * This function adds a transaction to the block. The return value is one of the
      * following:
@@ -92,7 +113,6 @@ public class Block implements Serializable {
 
                 if (i == transactions.length - 1) {
                     try {
-                        generateHash();
                         return true;
                     } catch (Exception e) {
                         throw e;
@@ -106,25 +126,44 @@ public class Block implements Serializable {
         throw new BlockIsFullException(index, Util.bytesToHex(hash));
     }
 
-    private void generateHash() throws Exception {
-        byte[] thisObject = Util.serialize(this);
+    public byte[] generateHash() {
+        int totalLength = 0;
+
+        // For each transaction
+        for (Transaction transaction : transactions) {
+            if (transaction != null) {
+                totalLength += transaction.getRawTransactionId().length;
+            }
+        }
+
+        // For index
+        totalLength += Integer.BYTES;
+
+        // For total fees
+        totalLength += Double.BYTES;
+
+        // For node id of fee receiver
+        totalLength += nodeIdOfFeeReceiver.length();
+
+        ByteBuffer buffer = ByteBuffer.allocate(totalLength);
+        buffer.putInt(index);
+        for (Transaction transaction : transactions) {
+            byte[] transactionIdBytes = transaction.getRawTransactionId();
+            buffer.put(transactionIdBytes);
+        }
+        buffer.putDouble(totalFees);
+        buffer.put(nodeIdOfFeeReceiver.getBytes());
+
+        byte[] data = buffer.array();
 
         try {
-            this.hash = CryptoUtil.hash(thisObject);
+            return CryptoUtil.hash(data);
         } catch (Exception e) {
-            throw e;
+            e.printStackTrace();
+            return null;
         }
+
     }
-
-    // private void generateHash(){
-    //     int totalLength = 0;
-
-    //     for (Transaction transaction : transactions) {
-    //         if(transaction != null){
-    //             totalLength += transaction.t;
-    //         }
-    //     }
-    // }
 
     // to json using Gson
     public String toJson() {
