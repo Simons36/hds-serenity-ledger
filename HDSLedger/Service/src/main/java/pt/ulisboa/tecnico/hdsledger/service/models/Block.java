@@ -44,6 +44,10 @@ public class Block implements Serializable {
         return hash;
     }
 
+    public double getTotalFees() {
+        return totalFees;
+    }
+
     public boolean isFull() {
         for (Transaction transaction : transactions) {
             if (transaction == null) {
@@ -111,6 +115,16 @@ public class Block implements Serializable {
             throw e;
         }
     }
+
+    // private void generateHash(){
+    //     int totalLength = 0;
+
+    //     for (Transaction transaction : transactions) {
+    //         if(transaction != null){
+    //             totalLength += transaction.t;
+    //         }
+    //     }
+    // }
 
     // to json using Gson
     public String toJson() {

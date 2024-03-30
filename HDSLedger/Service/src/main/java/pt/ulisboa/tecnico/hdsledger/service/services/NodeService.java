@@ -5,6 +5,7 @@ import java.security.PublicKey;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.utilities.ServiceConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.Util;
 
 public class NodeService implements UDPService {
 
@@ -88,6 +90,9 @@ public class NodeService implements UDPService {
     // Ledger
     private ArrayList<Block> ledger = new ArrayList<Block>();
 
+    // Store nonces to avoid replay attacks
+    private Map<String, List<String>> nonceListOfRequestsSentByClients = new ConcurrentHashMap<>(); // <clientId, nonceInBase64>
+
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs,
             ServiceConfig serviceConfig) {
@@ -106,6 +111,8 @@ public class NodeService implements UDPService {
 
         // Start initialization of block to be built
         ResetCurrentBlockBuilder();
+
+        InitializeNonceArray(clientsConfigs);
     }
 
     public ProcessConfig getConfig() {
@@ -175,6 +182,14 @@ public class NodeService implements UDPService {
                     }
                 });
 
+    }
+
+    private void InitializeNonceArray(ProcessConfig[] clientsConfigs) {
+        // Initialize nonce array
+        Arrays.stream(clientsConfigs)
+                .forEach(clientConfig -> {
+                    this.nonceListOfRequestsSentByClients.put(clientConfig.getId(), new ArrayList<String>());
+                });
     }
 
     public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
@@ -274,6 +289,12 @@ public class NodeService implements UDPService {
         // verify if the message is justified
         if (!JustifyPrePrepare(message))
             return;
+
+        // Lastly, we do all verifications that correspond to the block information (signatures of transactions, block hash, etc)
+
+        if(!VerifyBlockInPrePrepare(new Gson().fromJson(value, Block.class))){
+            return;
+        }
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -620,12 +641,25 @@ public class NodeService implements UDPService {
                 this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.INSUFFICIENT_BALANCE);
                 return;
             }
+            
+            // Verify if nonce was used before
+            if (this.nonceListOfRequestsSentByClients.get(senderId).contains(transaction.getNonceInBase64())) {
+                LOGGER.log(Level.SEVERE,
+                        MessageFormat.format("{0} - Nonce {1} was already used by sender {2}",
+                                this.config.getId(), transaction.getNonceInBase64(), senderId));
+
+                this.clientService.SendTransferErrorMessage(senderId, messageId, ErrorType.NONCE_ALREADY_USED);
+                return;
+            }
 
             // All the checks passed; we now need to add the transaction to the current
             // block
             // Last thing, set fee
 
             transaction.setFee(this.serviceConfig.getTransactionFee());
+
+            // And add nonce to the list of nonces
+            this.nonceListOfRequestsSentByClients.get(senderId).add(transaction.getNonceInBase64());
 
             LOGGER.log(Level.INFO, MessageFormat.format("{0} - Adding transaction to block: {1}",
                     this.config.getId(), transaction.getTransactionIdInHex()));
@@ -656,6 +690,8 @@ public class NodeService implements UDPService {
 
             // Send success message to client
             this.clientService.SendTransferSuccessMessage(senderId, messageId);
+
+
 
         }
     }
@@ -898,6 +934,100 @@ public class NodeService implements UDPService {
 
     }
 
+    private boolean VerifyBlockInPrePrepare(Block block) {
+        try {
+
+            //Create copy of accountInfo
+            Map<String, AccountInfo> tempAccountsInfo = new ConcurrentHashMap<>();
+            for(Map.Entry<String, AccountInfo> entry : accountsInfo.entrySet()){
+                tempAccountsInfo.put(entry.getKey(), new AccountInfo(entry.getValue().getAssociatedClientId(), entry.getValue().getBalance(), entry.getValue().getPublicKeyFilename()));
+            }
+
+            //Also see if sum of fees in transactions is equal to total fees
+            double sumOfTransactions = 0;
+        
+            // First we verify the signatures of all transactions
+
+            for (Transaction transaction : block.getTransactions()) {
+
+                //first verify if transactionId = hash(sender_public_key + receiver_public_key + amount + nonce)
+
+                byte[] transactionToCompare = Transaction.CreateTransactionId(transaction.getSenderPublicKey(),
+                                                                            transaction.getReceiverPublicKey(), 
+                                                                            transaction.getAmount(),
+                                                                            transaction.getNonceInBase64());
+
+                if(!Arrays.equals(transactionToCompare, transaction.getRawTransactionId())){
+
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid transactionId",
+                        this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
+
+                    return false;
+                }
+
+                // Verify if fee is correct
+                if(transaction.getFee() != (this.serviceConfig.getTransactionFee() * transaction.getAmount())){
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid fee",
+                        this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
+                    return false;
+                }
+
+                sumOfTransactions += transaction.getFee();
+                
+                // Verify if the nonce has already been used
+
+                for(Block b : ledger){
+                    for(Transaction t : b.getTransactions()){
+                        if(t.getSenderPublicKeyBase64().equals(transaction.getSenderPublicKeyBase64())){
+                            if(t.getNonceInBase64().equals(transaction.getNonceInBase64())){
+                                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has a nonce that was already used",
+                                    this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
+                                return false;
+                            }
+                        }
+                    }
+                }
+
+                // Now verify signature
+                if (!CryptoUtil.verifySignature(transaction.getRawTransactionId(), transaction.getSignature(), transaction.getSenderPublicKey())) {
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid signature",
+                        this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
+                    return false;
+                }
+
+                // Now we need to apply the transaction to the temporary accountInfo;
+                // In the end we will verify if any account has a negative balance
+
+                tempAccountsInfo.get(GetClientIdCorrespondingToPublicKey(transaction.getSenderPublicKey())).decreaseBalance(transaction.getAmount());
+                tempAccountsInfo.get(GetClientIdCorrespondingToPublicKey(transaction.getReceiverPublicKey())).increaseBalance(transaction.getAmount() - transaction.getFee());
+
+
+            }
+
+            for(Map.Entry<String, AccountInfo> entry : tempAccountsInfo.entrySet()){
+                if(entry.getValue().getBalance() < 0){
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because account {2} has a negative balance",
+                        this.config.getId(), Util.bytesToHex(block.getHash()), entry.getKey()));
+                    return false;
+                }
+            }
+
+            // Now we need to verify if the sum of all transactions is equal to the total fees
+            if(sumOfTransactions != block.getTotalFees()){
+                LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because the sum of all transactions is not equal to the total fees",
+                        this.config.getId(), Util.bytesToHex(block.getHash())));
+                return false;
+            }
+                
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+    }
+
     private void CreateAccount(String clientId, int initialBalance, String clientPublicKeyPath) {
 
         // If account already exists throw error
@@ -910,6 +1040,14 @@ public class NodeService implements UDPService {
 
     private void ResetCurrentBlockBuilder() {
         this.currentBlock = new BlockBuilder(ledger.size(), serviceConfig.getNumTransactionsInBlock());
+    }
+
+    private String GetClientIdCorrespondingToPublicKey(PublicKey publicKey) {
+        return this.accountsInfo.entrySet().stream()
+                .filter(entry -> CryptoUtil.verifyPublicKey(entry.getValue().getPublicKeyFilename(), publicKey))
+                .map(Map.Entry::getKey) // Extract the key if a matching value is found
+                .findFirst() // Get the first matching key, if any
+                .orElse(null); // Return null if no matching key is found
     }
 
     @Override
