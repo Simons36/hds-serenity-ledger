@@ -1,5 +1,7 @@
 # HDSLedger
 
+**IMPORTANT:** To see how to run tests, please check the end of this readme file.
+
 ## Introduction
 
 HDSLedger is a simplified permissioned (closed membership) blockchain system with high dependability
