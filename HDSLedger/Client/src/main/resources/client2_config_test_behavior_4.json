@@ -1,0 +1,30 @@
+[
+
+    {
+        "command"  : "sleep",
+        "arguments" : [
+            15
+        ]
+    },
+
+    {
+        "command" : "check_balance",
+        "arguments" : []
+    },
+
+    {
+        "command"  : "sleep",
+        "arguments" : [
+            1
+        ]
+    },
+
+    {
+        "command" : "write_check_balances",
+        "arguments" : [
+            "../Test/src/test/java/output/test_behavior_4_output_client2.txt"
+        ]
+    }
+
+
+]

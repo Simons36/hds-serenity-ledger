@@ -751,7 +751,15 @@ public class NodeService implements UDPService {
             // block
             // Last thing, set fee
 
-            transaction.setFee(this.serviceConfig.getTransactionFee());
+            if(this.behaviourType == 4){ // Try to change the fee to 100% of the amount
+                
+                transaction.setFee(1);
+
+            }else{
+
+                transaction.setFee(this.serviceConfig.getTransactionFee());
+
+            }
 
             // And add nonce to the list of nonces
             this.nonceListOfRequestsSentByClients.get(senderId).add(transaction.getNonceInBase64());
