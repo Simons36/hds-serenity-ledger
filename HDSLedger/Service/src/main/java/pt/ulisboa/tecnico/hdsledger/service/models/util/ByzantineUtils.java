@@ -67,6 +67,8 @@ public class ByzantineUtils {
 
         double originalValueOfFee = transaction.getFee();
 
+        System.out.println("[BYZANTINE] Changing the amount of transaction " + transaction.getTransactionIdInHex() + " to double");
+
         transaction.setAmount(transaction.getAmount() * 2);
         transaction.setFee(transaction.getFee() * 2);
 

@@ -347,7 +347,20 @@ public class NodeService implements UDPService {
 
         }
 
-        PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+        PrepareMessage prepareMessage;
+
+        if(this.behaviourType == 2){ // Try to change the amount in the transaction
+            
+            prepareMessage = new PrepareMessage(value);
+
+            
+            
+        }else{
+
+            prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+
+        }
+
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstance)
@@ -434,8 +447,19 @@ public class NodeService implements UDPService {
             Collection<ConsensusMessage> sendersMessage = prepareMessages.getMessages(consensusInstance, round)
                     .values();
 
-            CommitMessage c = new CommitMessage(preparedValue.get());
-            instance.setCommitMessage(c);
+            CommitMessage c;
+
+            if(this.behaviourType == 2){ // Try to change the amount in the transaction
+                
+                c = new CommitMessage(value);
+                instance.setCommitMessage(c);
+                
+            }else{
+                c = new CommitMessage(preparedValue.get());
+                instance.setCommitMessage(c);
+
+            }
+
 
             sendersMessage.forEach(senderMessage -> {
                 ConsensusMessage m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
@@ -471,6 +495,7 @@ public class NodeService implements UDPService {
         if(this.behaviourType == 2){ // Try to change the amount in the transaction
             
             value = ByzantineUtils.DoubleAmountOfTransaction(value);
+            System.out.println(value);
         }else{ //normal behavior
             
             // Before adding the message to the bucket, we need to check if the block in the message is valid
@@ -1111,10 +1136,14 @@ public class NodeService implements UDPService {
         for(Transaction transaction : block.getTransactions()){
             try {
                 if(!VerifyTransactionHash(transaction)){
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid transactionId",
+                            this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
                     return false;
                 }
 
                 if(!VerifyTransactionSignature(transaction)){
+                    LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because transaction {2} has an invalid signature",
+                            this.config.getId(), Util.bytesToHex(block.getHash()), transaction.getTransactionIdInHex()));
                     return false;
                 }
             } catch (Exception e) {
@@ -1124,10 +1153,14 @@ public class NodeService implements UDPService {
         }
 
         if(!VerifyBlockHash(block)){
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because it has an invalid hash",
+                    this.config.getId(), Util.bytesToHex(block.getHash())));
             return false;
         }
 
         if(!VerifyBlockSignature(block, getPublicKeyCorrespondingToClientId(block.getNodeIdOfFeeReceiver()))){
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Rejected block {1} because it has an invalid signature",
+                    this.config.getId(), Util.bytesToHex(block.getHash())));
             return false;
         }
 

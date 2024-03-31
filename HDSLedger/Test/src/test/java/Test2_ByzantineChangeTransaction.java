@@ -55,7 +55,7 @@ public class Test2_ByzantineChangeTransaction {
 
         // Wait 17 seconds
 
-        Util.Delay(15);
+        Util.Delay(100);
 
         // Check if the output file is the same as the expected output
 
