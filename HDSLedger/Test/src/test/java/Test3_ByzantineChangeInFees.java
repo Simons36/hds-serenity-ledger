@@ -62,7 +62,7 @@ public class Test3_ByzantineChangeInFees {
         try {
             assertEquals(EXPECTED_OUTPUT_CLIENT1, Files.readString(Paths.get(TEST_OUTPUT_CLIENT1)));
             assertEquals(EXPECTED_OUTPUT_CLIENT2, Files.readString(Paths.get(TEST_OUTPUT_CLIENT2)));
-            System.out.println("Simple Test: Success");
+            System.out.println("Byzantine Change In Fee Test: Success");
         } catch (IOException e) {
             throw e;
         }

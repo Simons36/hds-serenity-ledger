@@ -21,7 +21,7 @@ public class LeaderCrashTest {
 
     private final static String TEST_OUTPUT = "src/test/java/output/leader_crash_test_output.txt";
 
-    private final static String EXPECTED_OUTPUT = "append1append2";
+    private final static String EXPECTED_OUTPUT = "Server replied with success.\nServer replied with success.\n";
 
     private List<Process> processes = new ArrayList<>();
 

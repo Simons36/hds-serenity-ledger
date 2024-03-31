@@ -1,8 +1,9 @@
 [
     {
-        "command" : "append",
+        "command" : "transfer",
         "arguments" : [
-            "append1"
+            "client2",
+            100
         ]
     },
 
@@ -14,9 +15,10 @@
     },
 
     {
-        "command" : "append",
+        "command" : "transfer",
         "arguments" : [
-            "append2"
+            "client2",
+            100
         ]
     },
 
@@ -28,7 +30,7 @@
     },
 
     {
-        "command" : "write_ledger",
+        "command" : "write_output",
         "arguments" : [
             "../Test/src/test/java/output/leader_crash_test_output.txt"
         ]

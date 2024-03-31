@@ -1,9 +1,7 @@
 [
     {
-        "command" : "append",
-        "arguments" : [
-            "append1"
-        ]
+        "command" : "check_balance",
+        "arguments" : []
     },
 
     {
@@ -14,10 +12,8 @@
     },
 
     {
-        "command" : "append",
-        "arguments" : [
-            "append2"
-        ]
+        "command" : "check_balance",
+        "arguments" : []
     },
 
     {
@@ -28,7 +24,7 @@
     },
 
     {
-        "command" : "write_ledger",
+        "command" : "write_output",
         "arguments" : [
             "../Test/src/test/java/output/client_invalid_signature_test_output.txt"
         ]
