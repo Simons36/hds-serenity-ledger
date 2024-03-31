@@ -69,14 +69,17 @@ public class ClientState {
     private long sentCheckBalance = 0;
     // List with check balance request IDs that have already finished
     private List<Long> finishedCheckBalanceRequests = new ArrayList<>();
-    // Lock for commandLineInterface (used for displaying information in the command line in the correct order)
+    // Lock for commandLineInterface (used for displaying information in the command
+    // line in the correct order)
     private Object lock;
     // Message counter for nonce generation and for identifying transfer messages
     private long transferMessageCounter = 0;
     // List with transfer request IDs that have already finished
     private List<Long> finishedTransferRequests = new ArrayList<>();
+
     // List with all outputs from received checkBalance and transfer messages
     private List<String> allOutputs = new ArrayList<>();
+
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -128,7 +131,6 @@ public class ClientState {
                 .filter(config -> TypeOfProcess.node.equals(config.getType()))
                 .count();
 
-        
         this.checkBalanceResponseMessageBucket = new ClientMessageBucket(nodeCount);
         this.transferResponseMessageBucket = new ClientMessageBucket(nodeCount);
 
@@ -141,9 +143,11 @@ public class ClientState {
             }
 
         }
+
     }
 
-    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId, boolean verboseMode) throws Exception {
+    public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
+            boolean verboseMode) throws Exception {
         this(configPath, ipAddress, port, sendingPolicy, clientId, null, verboseMode);
     }
 
@@ -227,10 +231,10 @@ public class ClientState {
         SendTransferMessage(receiverId, amount);
         
     }
-    
-    private PublicKey getPublicKeyOfClient(String clientId) throws ClientIdDoesntExistException{
 
-        return  Arrays.stream(clientConfigs)
+    private PublicKey getPublicKeyOfClient(String clientId) throws ClientIdDoesntExistException {
+
+        return Arrays.stream(clientConfigs)
                 .filter(config -> config.getId().equals(clientId))
                 .findAny()
                 .map(config -> {
@@ -241,7 +245,7 @@ public class ClientState {
                     }
                 })
                 .orElseThrow(() -> new ClientIdDoesntExistException(clientId));
-        
+
     }
 
     protected void ledgerUpdate(ConsensusMessage consensusMessage) {
@@ -308,6 +312,7 @@ public class ClientState {
         Optional<Double> balance = this.checkBalanceResponseMessageBucket
                 .hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
+
         if (balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)) {
             String receivedValue = MessageFormat.format("{0} - Balance: {1}", clientId, balance.get());
             System.out.println(receivedValue);
@@ -344,7 +349,7 @@ public class ClientState {
             } else {
                 allOutputs.add("Server replied with the following error: "
                 + transferResponseMessageBucket.getTransferError(replyToTransferRequestId) + "\n");
-
+              
                 System.out.println("Server replied with the following error: "
                         + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
             }
@@ -363,6 +368,7 @@ public class ClientState {
     public void ExecuteCommands(String commandsFilePath) throws IOException, InterruptedException {
 
         try {
+            System.out.println(this.clientId + "\n");
             List<Command> commands = ImportCommandsFile(commandsFilePath);
 
             System.out.println(commands.size() + " commands found.");
@@ -451,16 +457,6 @@ public class ClientState {
             throw e;
         }
 
-    }
-
-    private void WriteLedgerToFile(String ledgerFilePath) throws IOException {
-
-        String ledgerString = String.join("", ledger);
-        BufferedWriter writer = new BufferedWriter(new FileWriter(ledgerFilePath));
-
-        writer.write(ledgerString);
-
-        writer.close();
     }
 
     // Writes all the saved outputs into the desired file

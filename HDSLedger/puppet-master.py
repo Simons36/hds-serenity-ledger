@@ -11,11 +11,11 @@ terminal = "kitty"
 
 # Blockchain node configuration file name
 server_configs = [
-    "regular_config.json",
+    "regular_config.json", "config_test_behavior_1.json"
 ]
 
 service_configs = [
-    "service_config.json",
+    "service_config.json", "service_config_test_behavior_1.json"
 ]
 
 

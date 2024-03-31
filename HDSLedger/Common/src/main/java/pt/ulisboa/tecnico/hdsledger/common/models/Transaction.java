@@ -18,7 +18,7 @@ public class Transaction implements Serializable{
 
     private final String receiverPublicKeyBase64;
 
-    private final double amount;
+    private double amount;
 
     private final String nonceInBase64;
 
@@ -79,6 +79,14 @@ public class Transaction implements Serializable{
 
     public double getFee() {
         return fee;
+    }
+
+    public void setTransactionId(byte[] transactionId) {
+        System.arraycopy(transactionId, 0, rawTransactionId, 0, transactionId.length);
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
     }
 
     public String getSignatureInBase64() {

@@ -74,6 +74,10 @@ public class Block implements Serializable {
         this.hash = hash;
     }
 
+    public void setTotalFees(double totalFees) {
+        this.totalFees = totalFees;
+    }
+
     public void signBlock(PrivateKey privateKey) {
         try {
             this.signature = CryptoUtil.sign(hash, privateKey);
@@ -124,6 +128,12 @@ public class Block implements Serializable {
         }
 
         throw new BlockIsFullException(index, Util.bytesToHex(hash));
+    }
+
+    public void replaceTransaction(int index, Transaction transaction) { // just for testing
+        totalFees -= transactions[index].getFee();
+        totalFees += transaction.getFee();
+        transactions[index] = transaction;
     }
 
     public byte[] generateHash() {
