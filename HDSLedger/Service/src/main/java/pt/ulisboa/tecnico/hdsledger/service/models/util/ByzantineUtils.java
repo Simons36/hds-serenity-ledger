@@ -96,6 +96,41 @@ public class ByzantineUtils {
 
     }
 
+    public static String ChangeFeeToZero(String blockInString){
+
+        Block block = new Gson().fromJson(blockInString, Block.class);
+        Transaction transaction = block.getTransactions()[0];
+
+        double originalValueOfFee = transaction.getFee();
+
+        System.out.println("[BYZANTINE] Changing the amount of transaction " + transaction.getTransactionIdInHex() + " to zero");
+
+        transaction.setFee(0);
+
+        try {
+            transaction.setTransactionId(Transaction.CreateTransactionId(transaction.getSenderPublicKey(), 
+                                                                        transaction.getReceiverPublicKey(), 
+                                                                        transaction.getAmount(), 
+                                                                        transaction.getNonceInBase64()));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //lastly, update the block
+
+        block.getTransactions()[0] = transaction;
+
+        //change total fees of block
+        block.setTotalFees(block.getTotalFees() - originalValueOfFee + transaction.getFee());
+
+        //set new hash
+        block.setHash(block.generateHash());
+        
+        return new Gson().toJson(block);
+
+    }
+
     private static ProcessConfig getRandomClientConfig(ProcessConfig[] allProcessConfigs) {
         
         // Get only clients

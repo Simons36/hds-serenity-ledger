@@ -309,6 +309,10 @@ public class NodeService implements UDPService {
             
             value = ByzantineUtils.DoubleAmountOfTransaction(value);
 
+        }else if (this.behaviourType == 3) { // Try to change the amount in the transaction
+            
+            value = ByzantineUtils.ChangeFeeToZero(value);
+
         }
 
         // Set instance value
@@ -349,7 +353,7 @@ public class NodeService implements UDPService {
 
         PrepareMessage prepareMessage;
 
-        if(this.behaviourType == 2){ // Try to change the amount in the transaction
+        if(this.behaviourType == 2 || this.behaviourType == 3){ // Try to change the amount in the transaction
             
             prepareMessage = new PrepareMessage(value);
 
@@ -399,6 +403,10 @@ public class NodeService implements UDPService {
             
             value = ByzantineUtils.DoubleAmountOfTransaction(value);
             
+        }else if (this.behaviourType == 3) { // Try to change the amount in the transaction
+            
+            value = ByzantineUtils.ChangeFeeToZero(value);
+
         }else{ // Normal behavior
             
             if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
@@ -449,7 +457,7 @@ public class NodeService implements UDPService {
 
             CommitMessage c;
 
-            if(this.behaviourType == 2){ // Try to change the amount in the transaction
+            if(this.behaviourType == 2 || this.behaviourType == 3){ // Try to change the amount in the transaction
                 
                 c = new CommitMessage(value);
                 instance.setCommitMessage(c);

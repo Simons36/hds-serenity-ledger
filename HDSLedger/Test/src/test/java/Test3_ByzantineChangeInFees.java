@@ -13,17 +13,17 @@ import org.junit.Test;
 
 import util.Util;
 
-public class Test2_ByzantineChangeTransaction {
+public class Test3_ByzantineChangeInFees {
     
-    private final static String COMMANDS_FILE_CLIENT1 = "client1_config_test_behavior_2.json";
+    private final static String COMMANDS_FILE_CLIENT1 = "client1_config_test_behavior_3.json";
 
-    private final static String COMMANDS_FILE_CLIENT2 = "client2_config_test_behavior_2.json";
+    private final static String COMMANDS_FILE_CLIENT2 = "client2_config_test_behavior_3.json";
 
-    private final static String CONFIG_PATH = "../Common/src/main/resources/config_test_behavior_2.json";
+    private final static String CONFIG_PATH = "../Common/src/main/resources/config_test_behavior_3.json";
 
-    private final static String TEST_OUTPUT_CLIENT1 = "src/test/java/output/test_behavior_2_output_client1.txt";
+    private final static String TEST_OUTPUT_CLIENT1 = "src/test/java/output/test_behavior_3_output_client1.txt";
 
-    private final static String TEST_OUTPUT_CLIENT2 = "src/test/java/output/test_behavior_2_output_client2.txt";
+    private final static String TEST_OUTPUT_CLIENT2 = "src/test/java/output/test_behavior_3_output_client2.txt";
 
     private final static String EXPECTED_OUTPUT_CLIENT1 = "client1 - Balance: 950";
 
