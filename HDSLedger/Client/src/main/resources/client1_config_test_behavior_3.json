@@ -27,7 +27,7 @@
     },
 
     {
-        "command" : "write_check_balances",
+        "command" : "write_output",
         "arguments" : [
             "../Test/src/test/java/output/test_behavior_3_output_client1.txt"
         ]

@@ -25,9 +25,9 @@ public class Test1_ByzantineLeader {
 
     private final static String TEST_OUTPUT_CLIENT2 = "src/test/java/output/test_behavior_1_output_client2.txt";
 
-    private final static String EXPECTED_OUTPUT_CLIENT1 = "client1 - Balance: 1,000";
+    private final static String EXPECTED_OUTPUT_CLIENT1 = "client1 - Balance: 1,000\n";
 
-    private final static String EXPECTED_OUTPUT_CLIENT2 = "client2 - Balance: 1,000";
+    private final static String EXPECTED_OUTPUT_CLIENT2 = "client2 - Balance: 1,000\n";
 
     private List<Process> processes = new ArrayList<>();
 
@@ -64,7 +64,7 @@ public class Test1_ByzantineLeader {
         try {
             assertEquals(EXPECTED_OUTPUT_CLIENT1, Files.readString(Paths.get(TEST_OUTPUT_CLIENT1)));
             assertEquals(EXPECTED_OUTPUT_CLIENT2, Files.readString(Paths.get(TEST_OUTPUT_CLIENT2)));
-            System.out.println("Simple Test: Success");
+            System.out.println("Byzantine Leader Test: Success");
         } catch (IOException e) {
             throw e;
         }

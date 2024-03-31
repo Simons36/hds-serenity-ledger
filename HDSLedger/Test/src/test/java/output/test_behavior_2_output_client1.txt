@@ -1,1 +1,2 @@
+Server replied with success.
 client1 - Balance: 950

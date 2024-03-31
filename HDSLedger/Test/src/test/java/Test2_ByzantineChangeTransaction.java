@@ -25,9 +25,9 @@ public class Test2_ByzantineChangeTransaction {
 
     private final static String TEST_OUTPUT_CLIENT2 = "src/test/java/output/test_behavior_2_output_client2.txt";
 
-    private final static String EXPECTED_OUTPUT_CLIENT1 = "client1 - Balance: 950";
+    private final static String EXPECTED_OUTPUT_CLIENT1 = "Server replied with success.\nclient1 - Balance: 950\n";
 
-    private final static String EXPECTED_OUTPUT_CLIENT2 = "client2 - Balance: 1,047.5";
+    private final static String EXPECTED_OUTPUT_CLIENT2 = "client2 - Balance: 1,047.5\n";
 
     private List<Process> processes = new ArrayList<>();
 
@@ -62,7 +62,7 @@ public class Test2_ByzantineChangeTransaction {
         try {
             assertEquals(EXPECTED_OUTPUT_CLIENT1, Files.readString(Paths.get(TEST_OUTPUT_CLIENT1)));
             assertEquals(EXPECTED_OUTPUT_CLIENT2, Files.readString(Paths.get(TEST_OUTPUT_CLIENT2)));
-            System.out.println("Simple Test: Success");
+            System.out.println("Byzantine Change Transaction: Success");
         } catch (IOException e) {
             throw e;
         }

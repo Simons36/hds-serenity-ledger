@@ -417,10 +417,6 @@ public class ClientState {
                             break;
                         }
                         break;
-
-                    case "write_ledger":
-                        WriteLedgerToFile((String) command.getArguments().get(0));
-                        break;
                     
                     case "write_output":
                         WriteOutputToFile((String) command.getArguments().get(0));
