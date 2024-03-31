@@ -5,6 +5,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.gson.Gson;
+
 import pt.ulisboa.tecnico.hdsledger.common.models.Transaction;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoIO;
 import pt.ulisboa.tecnico.hdsledger.cryptolib.CryptoUtil;
@@ -55,6 +57,42 @@ public class ByzantineUtils {
 
         return block;
 
+
+    }
+
+    public static String DoubleAmountOfTransaction(String blockInString){
+
+        Block block = new Gson().fromJson(blockInString, Block.class);
+        Transaction transaction = block.getTransactions()[0];
+
+        double originalValueOfFee = transaction.getFee();
+
+        System.out.println("[BYZANTINE] Changing the amount of transaction " + transaction.getTransactionIdInHex() + " to double");
+
+        transaction.setAmount(transaction.getAmount() * 2);
+        transaction.setFee(transaction.getFee() * 2);
+
+        try {
+            transaction.setTransactionId(Transaction.CreateTransactionId(transaction.getSenderPublicKey(), 
+                                                                        transaction.getReceiverPublicKey(), 
+                                                                        transaction.getAmount(), 
+                                                                        transaction.getNonceInBase64()));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        //lastly, update the block
+
+        block.getTransactions()[0] = transaction;
+
+        //change total fees of block
+        block.setTotalFees(block.getTotalFees() - originalValueOfFee + transaction.getFee());
+
+        //set new hash
+        block.setHash(block.generateHash());
+        
+        return new Gson().toJson(block);
 
     }
 

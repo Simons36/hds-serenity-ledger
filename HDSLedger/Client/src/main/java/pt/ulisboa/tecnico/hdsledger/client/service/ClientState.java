@@ -199,9 +199,7 @@ public class ClientState {
         }
     }
 
-    public void SendTransferMessage(String receiverId, double amount, Object lock) throws ClientIdDoesntExistException {
-        this.lock = lock;
-
+    public void SendTransferMessage(String receiverId, double amount) throws ClientIdDoesntExistException {
         System.out.println("Transfering " + amount + " coins to " + receiverId + "...");
 
         // Find clientId in clientConfig and get publicKey
@@ -223,6 +221,12 @@ public class ClientState {
         } catch (ErrorCommunicatingWithNode e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    public void SendTransferMessage(String receiverId, double amount, Object lock) throws ClientIdDoesntExistException {
+        this.lock = lock;
+        SendTransferMessage(receiverId, amount);
+        
     }
 
     private PublicKey getPublicKeyOfClient(String clientId) throws ClientIdDoesntExistException {
@@ -340,10 +344,14 @@ public class ClientState {
                         + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
             }
             finishedTransferRequests.add(replyToTransferRequestId);
-            synchronized (lock) {
-                lock.notify();
+            if(lock != null){
+                
+                synchronized (lock) {
+                    lock.notify();
+                }
+                lock = null;
+
             }
-            lock = null;
         }
     }
 
@@ -377,6 +385,11 @@ public class ClientState {
                         break;
                     case "check_balance":
                         SendCheckBalanceMessage();
+                        break;
+
+                    case "transfer":
+                        SendTransferMessage((String) command.getArguments().get(0),
+                                (Double) command.getArguments().get(1));
                         break;
 
                     default:
