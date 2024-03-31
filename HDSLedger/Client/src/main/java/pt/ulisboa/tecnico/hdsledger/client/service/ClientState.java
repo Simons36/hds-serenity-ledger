@@ -76,9 +76,7 @@ public class ClientState {
     // List with transfer request IDs that have already finished
     private List<Long> finishedTransferRequests = new ArrayList<>();
     // List with all outputs from received checkBalance and transfer messages
-    private ArrayList<String> allOutputs = new ArrayList<>();
-
-    private static final int MAX_TIME_WAIT = 5; // 10 seconds
+    private List<String> allOutputs = new ArrayList<>();
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -125,15 +123,6 @@ public class ClientState {
 
         startListening();
 
-        if (commandsFilePath != null) {
-
-            try {
-                ExecuteCommands(commandsFilePath);
-            } catch (IOException e) {
-                throw new CommandsFilePathNotValidException(commandsFilePath);
-            }
-
-        }
 
         int nodeCount = (int) Arrays.stream(allConfigs)
                 .filter(config -> TypeOfProcess.node.equals(config.getType()))
@@ -143,6 +132,15 @@ public class ClientState {
         this.checkBalanceResponseMessageBucket = new ClientMessageBucket(nodeCount);
         this.transferResponseMessageBucket = new ClientMessageBucket(nodeCount);
 
+        if (commandsFilePath != null) {
+
+            try {
+                ExecuteCommands(commandsFilePath);
+            } catch (IOException e) {
+                throw new CommandsFilePathNotValidException(commandsFilePath);
+            }
+
+        }
     }
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId, boolean verboseMode) throws Exception {
@@ -181,8 +179,13 @@ public class ClientState {
 
     public void SendCheckBalanceMessage(Object lock) {
 
+        this.lock = lock;
+        SendCheckBalanceMessage();
+    }
+
+    public void SendCheckBalanceMessage() {
+
         try {
-            this.lock = lock;
 
             ConsensusMessage checkBalanceMessage = new ConsensusMessageBuilder(clientId, Message.Type.CHECK_BALANCE)
                     .setMessage(new CheckBalanceMessage(publicKey, ++this.sentCheckBalance).toJson())
@@ -190,15 +193,12 @@ public class ClientState {
 
             clientService.broadcast(checkBalanceMessage);
 
-
         } catch (ErrorCommunicatingWithNode e) {
             System.out.println(e.getMessage());
         }
     }
 
-    public void SendTransferMessage(String receiverId, double amount, Object lock) throws ClientIdDoesntExistException{
-        this.lock = lock;
-
+    public void SendTransferMessage(String receiverId, double amount) throws ClientIdDoesntExistException {
         System.out.println("Transfering " + amount + " coins to " + receiverId + "...");
 
         // Find clientId in clientConfig and get publicKey
@@ -206,8 +206,9 @@ public class ClientState {
 
         // Generate nonce
         byte[] nonce = CryptoUtil.generateNonce(++transferMessageCounter);
-        
-        Transaction transaction = new Transaction(this.privateKey, publicKey, getPublicKeyOfClient(receiverId), amount, Base64.getEncoder().encodeToString(nonce));
+
+        Transaction transaction = new Transaction(this.privateKey, publicKey, getPublicKeyOfClient(receiverId), amount,
+                Base64.getEncoder().encodeToString(nonce));
 
         try {
             ConsensusMessage transferMessage = new ConsensusMessageBuilder(clientId, Message.Type.TRANSFER)
@@ -219,6 +220,12 @@ public class ClientState {
         } catch (ErrorCommunicatingWithNode e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    public void SendTransferMessage(String receiverId, double amount, Object lock) throws ClientIdDoesntExistException {
+        this.lock = lock;
+        SendTransferMessage(receiverId, amount);
+        
     }
     
     private PublicKey getPublicKeyOfClient(String clientId) throws ClientIdDoesntExistException{
@@ -292,25 +299,29 @@ public class ClientState {
     }
 
     protected void uponCheckBalanceResponse(ConsensusMessage consensusMessage) {
-        
 
         this.checkBalanceResponseMessageBucket.addMessage(consensusMessage);
 
-        long replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage().getResponseToCheckBalanceRequestId();
+        long replyToCheckBalanceRequestId = consensusMessage.deserializeCheckBalanceResponseMessage()
+                .getResponseToCheckBalanceRequestId();
 
-        Optional<Double> balance = this.checkBalanceResponseMessageBucket.hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
+        Optional<Double> balance = this.checkBalanceResponseMessageBucket
+                .hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
-        if(balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)){
-            System.out.println(MessageFormat.format("{0} - Balance: {1}", clientId, balance.get()));
+        if (balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)) {
+            String receivedValue = MessageFormat.format("{0} - Balance: {1}", clientId, balance.get());
+            System.out.println(receivedValue);
 
-            // Save the message inside the list
-            String output = clientId + " - Balance: " + String.valueOf(balance.get()) + "\n";
-            allOutputs.add(output);
+            this.allOutputs.add(receivedValue + "\n"); // For tests
 
             finishedCheckBalanceRequests.add(replyToCheckBalanceRequestId);
-            synchronized(lock){
-                lock.notify();
+
+            if (lock != null) {
+                synchronized (lock) {
+                    lock.notify();
+                }
             }
+
             lock = null;
         }
 
@@ -321,25 +332,31 @@ public class ClientState {
 
         long replyToTransferRequestId = consensusMessage.deserializeTransferResponseMessage().getResponseToMessageId();
 
-        Optional<Boolean> success = this.transferResponseMessageBucket.hasValidTransferResponseQuorum(replyToTransferRequestId);
+        Optional<Boolean> success = this.transferResponseMessageBucket
+                .hasValidTransferResponseQuorum(replyToTransferRequestId);
 
-        if(success.isPresent() && !finishedTransferRequests.contains(replyToTransferRequestId)){
-            if(success.get()){
+        if (success.isPresent() && !finishedTransferRequests.contains(replyToTransferRequestId)) {
+            if (success.get()) {
+                allOutputs.add("Server replied with success.\n");
+
                 System.out.println("Server replied with success.");
 
-                // add to the list of outputs
-                allOutputs.add("Server replied with success.\n");
-            }else{
-                System.out.println("Server replied with the following error: " + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
+            } else {
+                allOutputs.add("Server replied with the following error: "
+                + transferResponseMessageBucket.getTransferError(replyToTransferRequestId) + "\n");
 
-                // add to the list of outputs
-                allOutputs.add("Server replied with the following error: " + transferResponseMessageBucket.getTransferError(replyToTransferRequestId) + "\n");
+                System.out.println("Server replied with the following error: "
+                        + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
             }
             finishedTransferRequests.add(replyToTransferRequestId);
-            synchronized(lock){
-                lock.notify();
+            if(lock != null){
+                
+                synchronized (lock) {
+                    lock.notify();
+                }
+                lock = null;
+
             }
-            lock = null;
         }
     }
 
@@ -369,14 +386,11 @@ public class ClientState {
                         break;
 
                     case "check_balance":
-                        Object lock_balance = new Object();
-                        SendCheckBalanceMessage(lock_balance);
-                        WaitForLock(lock_balance);
+                        SendCheckBalanceMessage();
 
                         break;
 
                     case "transfer":
-                        Object lock_transfer = new Object();
                         String clientID = (String) command.getArguments().get(0);
 
                         try {
@@ -386,18 +400,16 @@ public class ClientState {
                             }
                             
                             else{
-                                SendTransferMessage(clientID, amount, lock_transfer);
+                                SendTransferMessage(clientID, amount);
                             }
 
                         } catch (NumberFormatException e) {
                             allOutputs.add("Amount must be a positive integer.\n");
-
+                            break;
                         } catch (ClientIdDoesntExistException e){
                             allOutputs.add("Client with id " + clientID + " doesn't exist.\n");
                             break;
                         }
-
-                        WaitForLock(lock_transfer);
                         break;
 
                     case "write_ledger":
@@ -458,42 +470,11 @@ public class ClientState {
 
         for (String output : allOutputs){
             String outputString = String.join("", output);
+            System.out.println(output);
             writer.write(outputString);
         }
 
         writer.close();
     }
-
-    private static void WaitForLock(Object lock){
-        // Start a separate thread for the timer
-        Thread timerThread = new Thread(() -> {
-            try {
-                // Sleep for the desired duration
-                Thread.sleep(MAX_TIME_WAIT * 1000);
-                synchronized (lock) {
-                    // Interrupt the waiting thread after the timeout
-                    System.out.println("Timeout: Could not get response in time.");
-                    lock.notify(); // Notify the waiting thread
-                    
-                }
-            } catch (InterruptedException e) {
-                // Timer thread interrupted, which means the waiting thread was notified before the timeout
-            }
-        });
-        timerThread.start();
-    
-        synchronized (lock) {
-            try {
-                lock.wait(); // Wait for the response or timeout
-            } catch (InterruptedException e) {
-                System.out.println("Waiting thread interrupted");
-            } finally {
-                // Regardless of whether the waiting thread was interrupted or not,
-                // interrupt the timer thread to stop it
-                timerThread.interrupt();
-            }
-        }
-    }
-
 
 }

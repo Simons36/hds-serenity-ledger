@@ -20,7 +20,7 @@ public class MultipleTransferTest {
 
     private final static String TEST_OUTPUT = "src/test/java/output/multiple_transfer_test_output.txt";
 
-    private final static String EXPECTED_OUTPUT = "Server replied with success.\nServer replied with success.\nServer replied with success.\nclient1 - Balance: 650.0\n";
+    private final static String EXPECTED_OUTPUT = "Server replied with success.\nServer replied with success.\nServer replied with success.\nclient1 - Balance: 650\n";
 
     private List<Process> processes = new ArrayList<>();
 
@@ -44,15 +44,15 @@ public class MultipleTransferTest {
         // Launch client
         processes.addAll(Arrays.asList(Util.LaunchAllClients(CONFIG_PATH, clientCommandsFileMap)));
 
-        // Wait 17 seconds
+        // Wait 30 seconds
 
-        Util.Delay(17);
+        Util.Delay(40);
 
         // Check if the output file is the same as the expected output
 
         try {
             assertEquals(EXPECTED_OUTPUT, Files.readString(Paths.get(TEST_OUTPUT)));
-            System.out.println("Negative Amount Transfer Test: Success");
+            System.out.println("Multiple Transfer Test: Success");
         } catch (IOException e) {
             throw e;
         }

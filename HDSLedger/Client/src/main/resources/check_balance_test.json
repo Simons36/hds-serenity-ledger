@@ -1,12 +1,20 @@
-[
+[   
     {
-        "command" : "check_balance"
+        "command" : "sleep",
+        "arguments" : [
+            5
+        ]
+    },
+
+    {
+        "command" : "check_balance",
+        "arguments" : []
     },
 
     {
         "command" : "sleep",
         "arguments" : [
-            5
+            2
         ]
     },
 

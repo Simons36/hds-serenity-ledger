@@ -10,7 +10,7 @@
     {
         "command" : "sleep",
         "arguments" : [
-            2
+            4
         ]
     },
 
@@ -25,7 +25,7 @@
     {
         "command" : "sleep",
         "arguments" : [
-            2
+            4
         ]
     },
 
@@ -40,12 +40,13 @@
     {
         "command" : "sleep",
         "arguments" : [
-            2
+            4
         ]
     },
 
     {
-        "command" : "check_balance"
+        "command" : "check_balance",
+        "arguments" : []
     },
 
     {

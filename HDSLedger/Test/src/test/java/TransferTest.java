@@ -20,7 +20,7 @@ public class TransferTest {
 
     private final static String TEST_OUTPUT = "src/test/java/output/transfer_test_output.txt";
 
-    private final static String EXPECTED_OUTPUT = "Server replied with success.\nclient1 - Balance: 1000.0\n";
+    private final static String EXPECTED_OUTPUT = "Server replied with success.\nclient1 - Balance: 900\n";
 
     private List<Process> processes = new ArrayList<>();
 
@@ -52,7 +52,7 @@ public class TransferTest {
 
         try {
             assertEquals(EXPECTED_OUTPUT, Files.readString(Paths.get(TEST_OUTPUT)));
-            System.out.println("Negative Amount Transfer Test: Success");
+            System.out.println("Transfer Test: Success");
         } catch (IOException e) {
             throw e;
         }

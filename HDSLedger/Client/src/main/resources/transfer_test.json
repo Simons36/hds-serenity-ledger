@@ -15,7 +15,8 @@
     },
 
     {
-        "command" : "check_balance"
+        "command" : "check_balance",
+        "arguments" : []
     },
 
     {

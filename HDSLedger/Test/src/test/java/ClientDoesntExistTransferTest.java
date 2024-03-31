@@ -20,7 +20,7 @@ public class ClientDoesntExistTransferTest {
 
     private final static String TEST_OUTPUT = "src/test/java/output/client_doesnt_exist_transfer_test_output.txt";
 
-    private final static String EXPECTED_OUTPUT = "Client with id client3 doesn't exist.";
+    private final static String EXPECTED_OUTPUT = "Client with id client10 doesn't exist.\n";
 
     private List<Process> processes = new ArrayList<>();
 

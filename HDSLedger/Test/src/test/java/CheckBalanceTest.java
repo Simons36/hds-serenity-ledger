@@ -21,7 +21,7 @@ public class CheckBalanceTest {
 
     private final static String TEST_OUTPUT = "src/test/java/output/check_balance_test_output.txt";
 
-    private final static String EXPECTED_OUTPUT = "client1 - Balance: 1000.0\n";
+    private final static String EXPECTED_OUTPUT = "client1 - Balance: 1,000\n";
 
     private List<Process> processes = new ArrayList<>();
 
@@ -44,9 +44,9 @@ public class CheckBalanceTest {
         // Launch client
         processes.addAll(Arrays.asList(Util.LaunchAllClients(CONFIG_PATH, clientCommandsFileMap)));
 
-        // Wait 17 seconds
+        // Wait 20 seconds
 
-        Util.Delay(17);
+        Util.Delay(20);
 
         // Check if the output file is the same as the expected output
 
