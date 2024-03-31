@@ -24,8 +24,6 @@ public class ClientInvalidSignatureTest {
     private final static String EXPECTED_OUTPUT = "";
 
     private List<Process> processes = new ArrayList<>();
-
-    
     
     /*
      * In this text the client sends two append requests to the nodes, but the signature is invalid (it will use the wrong private key to sign the request).
@@ -57,7 +55,7 @@ public class ClientInvalidSignatureTest {
 
         try {
             assertEquals(EXPECTED_OUTPUT, Files.readString(Paths.get(TEST_OUTPUT)));
-            System.out.println("Simple Test: Success");
+            System.out.println("Client Invalid Signature Test: Success");
         } catch (IOException e) {
             throw e;
         }
@@ -66,7 +64,8 @@ public class ClientInvalidSignatureTest {
 
         Util.KillAllProcesses(processes);
 
-
+        // Wait 4 seconds
+        Util.Delay(4);
         
     }
 }

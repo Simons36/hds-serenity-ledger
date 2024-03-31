@@ -57,7 +57,7 @@ public class LeaderCrashTest {
 
         try {
             assertEquals(EXPECTED_OUTPUT, Files.readString(Paths.get(TEST_OUTPUT)));
-            System.out.println("Simple Test: Success");
+            System.out.println("Leader Crash Test: Success");
         } catch (IOException e) {
             throw e;
         }
@@ -66,7 +66,8 @@ public class LeaderCrashTest {
 
         Util.KillAllProcesses(processes);
 
-
+        // Wait 4 seconds
+        Util.Delay(4);
         
     }
 }

@@ -76,8 +76,10 @@ public class ClientState {
     private long transferMessageCounter = 0;
     // List with transfer request IDs that have already finished
     private List<Long> finishedTransferRequests = new ArrayList<>();
-    // List with received values from check_balance (for tests)
-    private List<String> receivedCheckBalanceValues = new ArrayList<>();
+
+    // List with all outputs from received checkBalance and transfer messages
+    private List<String> allOutputs = new ArrayList<>();
+
 
     public ClientState(String configPath, String ipAddress, int port, String sendingPolicy, String clientId,
             String commandsFilePath, boolean verboseMode)
@@ -123,6 +125,7 @@ public class ClientState {
         this.clientService = new ClientService(allConfigs, clientId, ipAddress, port, this, verboseMode);
 
         startListening();
+
 
         int nodeCount = (int) Arrays.stream(allConfigs)
                 .filter(config -> TypeOfProcess.node.equals(config.getType()))
@@ -309,11 +312,12 @@ public class ClientState {
         Optional<Double> balance = this.checkBalanceResponseMessageBucket
                 .hasValidCheckBalanceResponseQuorum(replyToCheckBalanceRequestId);
 
+
         if (balance.isPresent() && !finishedCheckBalanceRequests.contains(replyToCheckBalanceRequestId)) {
             String receivedValue = MessageFormat.format("{0} - Balance: {1}", clientId, balance.get());
             System.out.println(receivedValue);
 
-            this.receivedCheckBalanceValues.add(receivedValue); // For tests
+            this.allOutputs.add(receivedValue + "\n"); // For tests
 
             finishedCheckBalanceRequests.add(replyToCheckBalanceRequestId);
 
@@ -338,8 +342,14 @@ public class ClientState {
 
         if (success.isPresent() && !finishedTransferRequests.contains(replyToTransferRequestId)) {
             if (success.get()) {
+                allOutputs.add("Server replied with success.\n");
+
                 System.out.println("Server replied with success.");
+
             } else {
+                allOutputs.add("Server replied with the following error: "
+                + transferResponseMessageBucket.getTransferError(replyToTransferRequestId) + "\n");
+              
                 System.out.println("Server replied with the following error: "
                         + transferResponseMessageBucket.getTransferError(replyToTransferRequestId));
             }
@@ -355,7 +365,7 @@ public class ClientState {
         }
     }
 
-    public void ExecuteCommands(String commandsFilePath) throws IOException {
+    public void ExecuteCommands(String commandsFilePath) throws IOException, InterruptedException {
 
         try {
             System.out.println(this.clientId + "\n");
@@ -380,18 +390,42 @@ public class ClientState {
                             e.printStackTrace();
                         }
                         break;
-                    case "write_check_balances":
-                        WriteCheckBalances((String) command.getArguments().get(0));
-                        break;
+
                     case "check_balance":
                         SendCheckBalanceMessage();
+
                         break;
 
                     case "transfer":
-                        SendTransferMessage((String) command.getArguments().get(0),
-                                (Double) command.getArguments().get(1));
+                        String clientID = (String) command.getArguments().get(0);
+
+                        try {
+                            Double amount = (Double) command.getArguments().get(1);
+                            if(amount <= 0){
+                                allOutputs.add("Amount must be a positive integer.\n");
+                            }
+                            
+                            else{
+                                SendTransferMessage(clientID, amount);
+                            }
+
+                        } catch (NumberFormatException e) {
+                            allOutputs.add("Amount must be a positive integer.\n");
+                            break;
+                        } catch (ClientIdDoesntExistException e){
+                            allOutputs.add("Client with id " + clientID + " doesn't exist.\n");
+                            break;
+                        }
                         break;
 
+                    case "write_ledger":
+                        WriteLedgerToFile((String) command.getArguments().get(0));
+                        break;
+                    
+                    case "write_output":
+                        WriteOutputToFile((String) command.getArguments().get(0));
+                        break;
+                    
                     default:
                         System.out.println("Unknown command: " + command.getCommand());
                         break;
@@ -425,14 +459,16 @@ public class ClientState {
 
     }
 
-    private void WriteCheckBalances(String testFilePath) throws IOException {
+    // Writes all the saved outputs into the desired file
+    private void WriteOutputToFile(String outputFilePath) throws IOException {
 
-        String output = String.join("\n", receivedCheckBalanceValues);
-        BufferedWriter writer = new BufferedWriter(new FileWriter(testFilePath));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath));
 
-        System.out.println("Writing to " + testFilePath);
-
-        writer.write(output);
+        for (String output : allOutputs){
+            String outputString = String.join("", output);
+            System.out.println(output);
+            writer.write(outputString);
+        }
 
         writer.close();
     }
