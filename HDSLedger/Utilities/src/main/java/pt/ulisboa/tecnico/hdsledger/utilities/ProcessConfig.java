@@ -26,6 +26,8 @@ public class ProcessConfig {
     // Used for leader election
     private int nodePosition;
 
+    private int behaviourType;
+
     public void setType(TypeOfProcess type) {
         this.type = type;
     }
@@ -69,6 +71,10 @@ public class ProcessConfig {
 
     public String getServiceConfig() {
         return serviceConfig;
+    }
+
+    public int getBehaviourType() {
+        return behaviourType;
     }
 
     public void setNodePosition(int nodePosition) {

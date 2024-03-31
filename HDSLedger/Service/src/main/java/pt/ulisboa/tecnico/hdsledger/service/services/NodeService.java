@@ -96,6 +96,9 @@ public class NodeService implements UDPService {
     // Store nonces to avoid replay attacks
     private Map<String, List<String>> nonceListOfRequestsSentByClients = new ConcurrentHashMap<>(); // <clientId, nonceInBase64>
 
+    // Behavior type
+    private final int behaviourType; // behavior type description in "Report.md"
+
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, ProcessConfig[] clientsConfigs,
             ServiceConfig serviceConfig) {
@@ -109,6 +112,7 @@ public class NodeService implements UDPService {
         this.commitMessages = new MessageBucket(nodesConfig.length);
         this.roundChangeMessages = new MessageBucket(nodesConfig.length);
         this.serviceConfig = serviceConfig;
+        this.behaviourType = config.getBehaviourType();
 
         InitializeAccounts(clientsConfigs);
 
@@ -130,6 +134,10 @@ public class NodeService implements UDPService {
 
     public ProcessConfig getConfig() {
         return this.config;
+    }
+
+    public int getBehaviourType() {
+        return this.behaviourType;
     }
 
     public int getConsensusInstance() {
@@ -565,6 +573,12 @@ public class NodeService implements UDPService {
 
         // Get this instance
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        if(instance == null){
+            LOGGER.log(Level.SEVERE, MessageFormat.format("{0} - Instance info not found for Consensus Instance {1}; ignoring ROUND-CHANGE message",
+                    config.getId(), consensusInstance));
+            return;
+        }
 
         // Need to check if we have received f + 1 valid round changes
         Optional<Integer> roundToChangeTo = roundChangeMessages.hasFPlusOneValidRoundChange(consensusInstance,
