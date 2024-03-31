@@ -36,6 +36,7 @@ import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.RoundTimer;
 import pt.ulisboa.tecnico.hdsledger.service.models.builder.BlockBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.models.exceptions.BlockIsFullException;
+import pt.ulisboa.tecnico.hdsledger.service.models.util.ByzantineUtils;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ErrorMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.HDSSException;
@@ -304,6 +305,12 @@ public class NodeService implements UDPService {
             return;
         }
 
+        if(this.behaviourType == 2){ // Try to change the amount in the transaction
+            
+            value = ByzantineUtils.DoubleAmountOfTransaction(value);
+
+        }
+
         // Set instance value
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
@@ -374,8 +381,16 @@ public class NodeService implements UDPService {
                         "{0} - Received PREPARE message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstance, round));
 
-        if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
-            return;
+                        
+        if(this.behaviourType == 2){ // Try to change the amount in the transaction
+            
+            value = ByzantineUtils.DoubleAmountOfTransaction(value);
+            
+        }else{ // Normal behavior
+            
+            if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
+                return;
+            }
         }
 
         // Doesn't add duplicate messages
@@ -453,10 +468,17 @@ public class NodeService implements UDPService {
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
 
-        // Before adding the message to the bucket, we need to check if the block in the message is valid
-        if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
-            return;
+        if(this.behaviourType == 2){ // Try to change the amount in the transaction
+            
+            value = ByzantineUtils.DoubleAmountOfTransaction(value);
+        }else{ //normal behavior
+            
+            // Before adding the message to the bucket, we need to check if the block in the message is valid
+            if (!VerifyBlockInPrepareAndCommit(new Gson().fromJson(value, Block.class))) {
+                return;
+            }
         }
+
 
         commitMessages.addMessage(message);
 

@@ -19,8 +19,8 @@ service_configs = [
 ]
 
 
-server_config = server_configs[1]
-service_config = service_configs[1]
+server_config = server_configs[0]
+service_config = service_configs[0]
 
 def quit_handler(*args):
     os.system(f"pkill -i {terminal}")
