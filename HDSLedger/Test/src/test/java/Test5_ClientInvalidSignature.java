@@ -13,7 +13,7 @@ import org.junit.Test;
 
 import util.Util;
 
-public class ClientInvalidSignatureTest {
+public class Test5_ClientInvalidSignature {
 
     private final static String COMMANDS_FILE = "client_invalid_signature_test.json";
 

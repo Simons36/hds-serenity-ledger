@@ -19,16 +19,50 @@ have the same state.
 
 # Configuration Files
 
-### Node configuration
+### Node/Client configuration
 
-Can be found inside the `resources/` folder of the `Service` module.
+Can be found inside the `src/main/resources/` folder of the `Common` module.
 
+Config of a node:
 ```json
 {
+    "type" : "node",
     "id": <NODE_ID>,
     "isLeader": <IS_LEADER>,
     "hostname": "localhost",
-    "port": <NODE_PORT>,
+    "port": <PORT>,
+    "clientRequestPort": <ANOTHER_PORT>,
+    "privateKeyPath" : "Keystore/<FILENAME_OF_PRIVATE_KEY>",
+    "publicKeyPath" : "Keystore/<FILENAME_OF_PUBLIC_KEY>",
+    "serviceConfig" : <SERVICE_CONFIG_FILENAME>
+
+}
+```
+
+Config of a client:
+
+```json
+{
+    "type" : "client",
+    "id": <NODE_ID>,
+    "hostname": "localhost",
+    "port": <PORT>,
+    "privateKeyPath" : "Keystore/<FILENAME_OF_PRIVATE_KEY>",
+    "publicKeyPath" : "Keystore/<FILENAME_OF_PUBLIC_KEY>"
+}
+```
+
+### Service Configuration
+
+Can be found inside the `src/main/resources` folder of the `Service` module. Contains some general configurations about the service (e.g., transaction fee percentage, number of transactions in a block, etc.).
+
+Example:
+
+```json
+{
+    "initial_account_balance": 1000,
+    "transaction_fee": 0.05,
+    "num_transaction_in_single_block" : 1
 }
 ```
 
@@ -43,6 +77,7 @@ To install the necessary dependencies run the following command:
 This should install the following dependencies:
 
 - [Google's Gson](https://github.com/google/gson) - A Java library that can be used to convert Java Objects into their JSON representation.
+- [Junit](https://junit.org/junit4/) - Junit is a simple framework to write repeatable tests.
 
 ## Puppet Master
 
@@ -77,19 +112,33 @@ mvn clean install
 
 ### Execution
 
-Run without arguments
+#### Client
+
+To run:
 
 ```
-cd <module>/
-mvn compile exec:java
+cd Client/
+mvn compile exec:java -Dexec.args="<id_of_client> <filename_of_config> localhost <port> all <false>"
 ```
 
-Run with arguments
+### Test Running
 
+To run the test, first change to the `Test` module
+
+```bash
+cd Test
 ```
-cd <module>/
-mvn compile exec:java -Dexec.args="..."
+
+Then, to run a single test, perform the following command:
+
+```bash
+mvn test -Dtest=<NAME_OF_TEST>
 ```
+
+To run all of the test, tou can simply execute the following command:
+
+```bash
+mvn test
+```
+
 ---
-This codebase was adapted from last year's project solution, which was kindly provided by the following group: [David Belchior](https://github.com/DavidAkaFunky), [Diogo Santos](https://github.com/DiogoSantoss), [Vasco Correia](https://github.com/Vaascoo). We thank all the group members for sharing their code.
-
