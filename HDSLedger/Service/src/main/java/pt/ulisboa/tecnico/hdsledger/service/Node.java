@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.service;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.service.models.Block;
+import pt.ulisboa.tecnico.hdsledger.service.models.util.ByzantineUtils;
 import pt.ulisboa.tecnico.hdsledger.service.services.ClientService;
 import pt.ulisboa.tecnico.hdsledger.service.services.NodeService;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
@@ -89,6 +91,15 @@ public class Node {
             nodeService.addClientService(clientService);
 
             clientService.listen();
+
+            if(nodeService.getBehaviourType() == 1){
+                // Wait a bit for every node to start
+                Thread.sleep(1000);
+
+                Block blockToSend = ByzantineUtils.GenerateRandomBlockForTestBehavior1(serviceConfig, allConfigs, nodeConfig);
+
+                nodeService.startConsensus(blockToSend.toJson());
+            }
 
 
             // //TODO: remove next lines

@@ -14,7 +14,7 @@ public class ServiceConfigBuilder {
     private final ServiceConfig instance = new ServiceConfig();
 
     public ServiceConfig fromFile(String path) {
-        // System.out.println(path);
+        System.out.println(path);
         try (BufferedInputStream is = new BufferedInputStream(new FileInputStream(path))) {
             String input = new String(is.readAllBytes(), StandardCharsets.UTF_8);
             Gson gson = new Gson();
