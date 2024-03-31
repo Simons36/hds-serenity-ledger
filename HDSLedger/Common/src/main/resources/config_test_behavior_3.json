@@ -1,0 +1,66 @@
+[
+    {
+        "type" : "node",
+        "id": "1",
+        "isLeader": true,
+        "hostname": "localhost",
+        "port": 3001,
+        "clientRequestPort": 3501,
+        "privateKeyPath" : "Keystore/private_id_1_key.der",
+        "publicKeyPath" : "Keystore/public_id_1_key.der",
+        "serviceConfig" : "service_config.json",
+        "behaviourType" : 0
+    },
+    {
+        "type" : "node",
+        "id": "2",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3002,
+        "clientRequestPort": 3502,
+        "privateKeyPath" : "Keystore/private_id_2_key.der",
+        "publicKeyPath" : "Keystore/public_id_2_key.der",
+        "serviceConfig" : "service_config.json",
+        "behaviourType" : 0
+    },
+    {
+        "type" : "node",
+        "id": "3",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3003,
+        "clientRequestPort": 3503,
+        "privateKeyPath" : "Keystore/private_id_3_key.der",
+        "publicKeyPath" : "Keystore/public_id_3_key.der",
+        "serviceConfig" : "service_config.json",
+        "behaviourType" : 3
+    },
+    {
+        "type" : "node",
+        "id": "4",
+        "isLeader": false,
+        "hostname": "localhost",
+        "port": 3004,
+        "clientRequestPort": 3504,
+        "privateKeyPath" : "Keystore/private_id_4_key.der",
+        "publicKeyPath" : "Keystore/public_id_4_key.der",
+        "serviceConfig" : "service_config.json",
+        "behaviourType" : 0
+    },
+    {
+        "type" : "client",
+        "id": "client1",
+        "hostname": "localhost",
+        "port": 4001,
+        "privateKeyPath" : "Keystore/private_id_client1_key.der",
+        "publicKeyPath" : "Keystore/public_id_client1_key.der"
+    },
+    {
+        "type" : "client",
+        "id": "client2",
+        "hostname": "localhost",
+        "port": 4002,
+        "privateKeyPath" : "Keystore/private_id_client2_key.der",
+        "publicKeyPath" : "Keystore/public_id_client2_key.der"
+    }
+]
